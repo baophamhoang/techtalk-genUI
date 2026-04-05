@@ -1,0 +1,24 @@
+{
+  "name": "genui-techtalk",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:json-render": "cd apps/json-render-demo && npm run dev",
+    "dev:vercel-ai": "cd apps/vercel-ai-demo && npm run dev",
+    "dev:multi-model": "cd apps/multi-model-demo && npm run dev",
+    "dev:all": "concurrently \"npm run dev:json-render\" \"npm run dev:vercel-ai\" \"npm run dev:multi-model\"",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "turbo": "^2.2.0",
+    "concurrently": "^8.2.0",
+    "prettier": "^3.2.5"
+  },
+  "packageManager": "npm@10.0.0"
+}
