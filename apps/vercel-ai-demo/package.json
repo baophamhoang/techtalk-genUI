@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.50",
+    "@ai-sdk/openai-compatible": "^2.0.38",
     "@ai-sdk/react": "^3.0.148",
     "ai": "^6.0.146",
     "class-variance-authority": "^0.7.1",

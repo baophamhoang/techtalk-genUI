@@ -48,7 +48,7 @@ npm run dev:all
 # Demo 1: JSON Render (Basic)
 cd apps/json-render-demo
 npm run dev
-# Open: http://localhost:3001
+# Open: http://localhost:3101
 
 # Demo 2: Vercel AI SDK (Medium)
 cd apps/vercel-ai-demo

@@ -42,6 +42,27 @@ header {
   color: white;
 }
 
+.button-group button.active {
+  background: #646cff;
+  color: white;
+  border-color: #646cff;
+}
+
+.submit-btn {
+  margin-top: 1rem;
+  padding: 0.8em 1.6em;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.submit-btn:hover {
+  background: #45a049;
+}
+
 .form-section,
 .schema-section,
 .data-section {

@@ -35,26 +35,26 @@ start_demo() {
     # Check if node_modules exists
     if [ ! -d "node_modules" ]; then
         echo "   Installing dependencies..."
-        npm install --silent > "../logs/${demo_name}-install.log" 2>&1
+        npm install --silent > "../../logs/${demo_name}-install.log" 2>&1
     fi
     
     # Start the demo in background
-    npm run dev > "../logs/${demo_name}.log" 2>&1 &
+    npm run dev > "../../logs/${demo_name}.log" 2>&1 &
     DEMO_PID=$!
-    echo $DEMO_PID > "../logs/${demo_name}.pid"
+    echo $DEMO_PID > "../../logs/${demo_name}.pid"
     
     # Wait for server to start
     echo "   Waiting for server on port $port..."
-    sleep 3
+    sleep 5
     
     # Check if server is running
     if curl -s "http://localhost:$port" > /dev/null 2>&1; then
         echo "   ✅ $demo_name running at http://localhost:$port"
     else
-        echo "   ⚠️  $demo_name may not be ready yet. Check logs/logs/${demo_name}.log"
+        echo "   ⚠️  $demo_name may not be ready yet. Check logs/${demo_name}.log"
     fi
     
-    cd ..
+    cd ../..
 }
 
 # Clean up previous runs
@@ -63,8 +63,11 @@ pkill -f "next\|vite" 2>/dev/null || true
 rm -f logs/*.pid
 
 # Start demos
-start_demo "JSON-Render-Demo" "apps/json-render-demo" "3001"
+echo ""
+start_demo "JSON-Render-Demo" "apps/json-render-demo" "3101"
+echo ""
 start_demo "Vercel-AI-Demo" "apps/vercel-ai-demo" "3000"
+echo ""
 start_demo "Multi-Model-Demo" "apps/multi-model-demo" "3002"
 
 echo ""
@@ -72,7 +75,7 @@ echo "========================================"
 echo "🎉 All demos started!"
 echo ""
 echo "📊 Demo URLs:"
-echo "   Demo 1 (Basic):     http://localhost:3001"
+echo "   Demo 1 (Basic):     http://localhost:3101"
 echo "   Demo 2 (Medium):    http://localhost:3000"
 echo "   Demo 3 (Advanced):  http://localhost:3002"
 echo ""

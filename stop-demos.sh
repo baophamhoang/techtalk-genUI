@@ -14,6 +14,7 @@ if [ -d "logs" ]; then
             if kill -0 "$pid" 2>/dev/null; then
                 echo "Stopping process $pid..."
                 kill "$pid" 2>/dev/null
+                sleep 1
             fi
             rm "$pidfile"
         fi
@@ -23,6 +24,7 @@ fi
 # Kill any remaining next/vite processes
 echo "Cleaning up any remaining processes..."
 pkill -f "next\|vite" 2>/dev/null || true
+sleep 2
 
 echo "✅ All demos stopped!"
 echo ""

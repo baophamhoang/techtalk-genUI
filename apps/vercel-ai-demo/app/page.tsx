@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { DashboardCard } from "@/app/components/DashboardCard";
 import { UserRoleSelector } from "@/app/components/UserRoleSelector";
 import { cn } from "@/app/lib/utils";
-import { GeneratedUI, getUserIntent, generateUIForIntent } from "@/app/lib/ai";
+import {
+  GeneratedUI,
+  getUserIntent,
+  generateUIForIntent,
+} from "@/app/lib/ai-simple";
 
 export default function Home() {
   const [userRole, setUserRole] = useState<"admin" | "manager" | "user">(
