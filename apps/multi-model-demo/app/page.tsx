@@ -36,7 +36,7 @@ export default function Home() {
       );
 
       setGenerationResult(result);
-      setTotalCost(result.estimatedCost || 0);
+      setTotalCost(result.totalCost || 0);
     } catch (error) {
       console.error("Generation failed:", error);
     } finally {

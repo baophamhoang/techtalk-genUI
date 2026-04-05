@@ -1,4 +1,4 @@
-import { DashboardCard as DashboardCardType } from "@/app/lib/ai";
+import { DashboardCard as DashboardCardType } from "@/app/lib/ai-simple";
 import { cn } from "@/app/lib/utils";
 
 interface DashboardCardProps {
