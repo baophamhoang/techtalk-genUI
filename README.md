@@ -58,7 +58,7 @@ npm run dev
 # Demo 3: Multi-Model (Advanced)
 cd apps/multi-model-demo
 npm run dev
-# Open: http://localhost:3002
+# Open: http://localhost:3003
 ```
 
 ## 🔧 API Keys Configuration
@@ -130,7 +130,7 @@ genUI-techtalk/
 
 ### Demo 3: Multi-Model Orchestration (Advanced)
 
-**Port:** 3002
+**Port:** 3003
 **Tech Stack:** Next.js 15 + Simulation Logic
 **Key Features:**
 
