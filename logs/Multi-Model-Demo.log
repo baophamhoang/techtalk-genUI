@@ -2,19 +2,9 @@
 > multi-model-demo@1.0.0 dev
 > next dev -p 3003
 
-▲ Next.js 16.2.2 (TurbopaError: listen EADDRINUSE: address already in use :::3003
-    at <unknown> (Error: listen EADDRINUSE: address already in use :::3003)
-    at new Promise (<anonymous>) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscReferenceError: module is not defined in ES module scope
-This file is being treated as an ES module because it has a '.js' file extension and '/Users/baopham/projects/side/techtalks/genUI/apps/multi-model-demo/package.json' contains "type": "module". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.
-    at <unknown> (next.config.js:6:1)
-[?25h
-npm error Lifecycle script `dev` failed with error:
-npm error code 1
-npm error path /Users/baopham/projects/side/techtalks/genUI/apps/multi-model-demo
-npm error workspace multi-model-demo@1.0.0
-npm error location /Users/baopham/projects/side/techtalks/genUI/apps/multi-model-demo
-npm error command failed
-npm error command sh -c next dev -p 3003
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3003
+- Network:       http://192.168.1.116:3003
+✓ Ready in 285ms
+
+ GET / 200 in 155ms (next.js: 80ms, application-code: 75ms)

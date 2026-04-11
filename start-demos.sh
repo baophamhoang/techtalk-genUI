@@ -59,7 +59,8 @@ start_demo() {
 
 # Clean up previous runs
 echo "🧹 Cleaning up previous sessions..."
-pkill -f "next\|vite" 2>/dev/null || true
+pkill -f "next" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
 rm -f logs/*.pid
 
 # Start demos
