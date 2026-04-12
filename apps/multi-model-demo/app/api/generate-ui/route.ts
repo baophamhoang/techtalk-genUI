@@ -25,6 +25,7 @@ STRICT RULES:
 7. Do NOT include any import or export statements — just the function body starting with: export default function App() {
 8. CRITICAL: For number values in JavaScript, NEVER use dots as thousand separators. Use plain integers: 7990000 NOT 7.990.000
 9. CRITICAL: String values in Vietnamese are fine, but JS number literals must be valid: 150000 not 150.000
+10. Keep it concise — aim for 60-100 lines. Prefer Tailwind classes over verbose inline style objects.
 
 Example output format:
 export default function App() {

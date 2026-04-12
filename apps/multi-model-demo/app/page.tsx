@@ -21,6 +21,7 @@ function LivePreview({ url }: { url: string }) {
     <iframe
       key={url}
       src={url}
+      sandbox="allow-scripts"
       style={{
         width: "100%",
         height: "560px",
@@ -69,15 +70,11 @@ export default function Home() {
         const { done, value } = await reader.read();
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
-        // Show code without the trailing marker while streaming
         setStreamedCode(accumulated.replace(PREVIEW_ID_MARKER, ""));
       }
 
-      // Extract BE-issued previewId from the end of the stream
       const match = accumulated.match(PREVIEW_ID_MARKER);
-      if (match) {
-        setPreviewUrl(`/api/preview/${match[1]}`);
-      }
+      if (match) setPreviewUrl(`/api/preview/${match[1]}`);
       setStreamedCode(accumulated.replace(PREVIEW_ID_MARKER, "").trim());
       setPhase("done");
     } catch (err: any) {
@@ -193,7 +190,7 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Left: Streamed code (raw view) */}
+        {/* Left: Streamed code */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-300 flex items-center gap-2">
@@ -226,7 +223,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right: Live Sandpack preview */}
+        {/* Right: Live Preview */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-300">🚀 Live Preview</h2>
