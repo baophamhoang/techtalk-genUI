@@ -150,16 +150,41 @@ function App() {
     <JSONUIProvider registry={genUIRegistry.registry}>
       <div className="app">
         <header>
-          <h1>GenUI Magic - Demo 1</h1>
-          <p>Tạo UI Động từ Server-Driven Events (Không sử dụng Chat)</p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+            <div>
+              <h1 style={{ margin: 0 }}>Demo 1 — Server-Driven UI (SDUI)</h1>
+              <p style={{ margin: "4px 0 0", opacity: 0.8 }}>UI tự sinh từ System Events — Không cần Chat, Không cần AI</p>
+            </div>
+            <span style={{ padding: "6px 14px", backgroundColor: "#166534", color: "#bbf7d0", borderRadius: "999px", fontSize: "13px", fontWeight: "bold", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+              ⚙️ RULE-BASED · NO AI
+            </span>
+          </div>
+
+          {/* Flow diagram */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "20px", flexWrap: "wrap", fontSize: "13px", fontWeight: "600" }}>
+            {[
+              { icon: "📡", label: "System Event" },
+              { icon: "⚙️", label: "Rule Engine" },
+              { icon: "📋", label: "JSON Schema" },
+              { icon: "✨", label: "UI Render" },
+            ].map((step, i, arr) => (
+              <React.Fragment key={step.label}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px", backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.25)" }}>
+                  <span>{step.icon}</span>
+                  <span>{step.label}</span>
+                </div>
+                {i < arr.length - 1 && <span style={{ opacity: 0.5, fontSize: "18px" }}>→</span>}
+              </React.Fragment>
+            ))}
+          </div>
         </header>
 
         <div className="demo-container">
           <div className="controls">
-            <h3>⚙️ System Event Triggers (Kích hoạt hệ thống)</h3>
-            <div style={{ padding: "16px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", marginBottom: "16px" }}>
-               <strong>Sự kiện đã ghi nhận: </strong> <i>"{currentPrompt}"</i>
-               {isGenerating && <span style={{ marginLeft: "8px", color: "#16a34a" }}> (Hệ thống đang Render UI...)</span>}
+            <h3>📡 System Event Triggers</h3>
+            <div style={{ padding: "12px 16px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", marginBottom: "16px", fontSize: "14px" }}>
+               <strong>Event nhận được: </strong> <i>"{currentPrompt}"</i>
+               {isGenerating && <span style={{ marginLeft: "8px", color: "#16a34a", fontWeight: "bold" }}> → Rule Engine đang chọn schema...</span>}
             </div>
             
             <div className="button-group" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -189,7 +214,7 @@ function App() {
 
           <div className="form-section">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-               <h3>⚡ Form UI Render Trực Tiếp</h3>
+               <h3>✨ UI Render (từ JSON Schema)</h3>
                {isGenerating && <div className="spinner" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "3px solid #ccc", borderTopColor: "#3b82f6", animation: "spin 1s linear infinite" }} />}
             </div>
             
@@ -203,17 +228,18 @@ function App() {
           </div>
 
           <div className="schema-section">
-            <h3>⚙️ Tải Trọng JSON Schema (ẩn sau màn hình)</h3>
+            <h3>📋 JSON Schema Payload <span style={{ fontSize: "12px", fontWeight: "normal", opacity: 0.6 }}>(Rule Engine trả về)</span></h3>
             <pre style={{ fontSize: "12px" }}>{JSON.stringify(currentSchema, null, 2)}</pre>
           </div>
         </div>
 
         <footer>
-          <h4>Tại sao phương pháp này đột phá (GenUI):</h4>
+          <h4>Tại sao SDUI là nền tảng của GenUI?</h4>
           <ul>
-            <li><strong>Không cần tạo tệp `.tsx` mới</strong>: Component được lắp ráp on-the-fly dựa theo ý đồ của AI.</li>
-            <li><strong>Hiệu ứng Streaming</strong>: Ứng dụng vẽ UI real-time ngay khi AI vừa nhả ra payload tương ứng.</li>
-            <li>Bảo mật cao hơn HTML Injection: Ứng dụng chỉ render các thẻ thuần được quy định sẵn tại Registry.</li>
+            <li><strong>Không cần tạo file `.tsx` mới:</strong> Component lắp ráp on-the-fly từ JSON — engineer định nghĩa Registry một lần duy nhất.</li>
+            <li><strong>Safe by design:</strong> Chỉ render các component đã đăng ký trong Registry, tránh HTML injection hoàn toàn.</li>
+            <li><strong>Tách biệt data và presentation:</strong> Server quyết định <em>cái gì</em> hiển thị, client chỉ lo <em>hiển thị như thế nào</em>.</li>
+            <li style={{ color: "#2563eb", fontWeight: "bold" }}>→ Demo 2 sẽ thay Rule Engine bằng AI thật để tự tạo ra JSON Schema này.</li>
           </ul>
         </footer>
         <style>{`
