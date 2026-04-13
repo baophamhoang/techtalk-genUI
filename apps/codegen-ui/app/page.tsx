@@ -103,7 +103,7 @@ export default function Home() {
               <Wand2 size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight">Demo 3 — AI Code Generator</h1>
+              <h1 className="text-lg font-black tracking-tight">Demo 3 — GenUI: Code Generation</h1>
               <p className="text-xs text-slate-400">Mô tả bằng tiếng Việt → AI viết React code → Live Preview ngay lập tức</p>
             </div>
           </div>

@@ -9,8 +9,8 @@
   "scripts": {
     "dev:json-render": "cd apps/json-render-demo && npm run dev",
     "dev:vercel-ai": "cd apps/vercel-ai-demo && npm run dev",
-    "dev:multi-model": "cd apps/multi-model-demo && npm run dev",
-    "dev:all": "concurrently \"npm run dev:json-render\" \"npm run dev:vercel-ai\" \"npm run dev:multi-model\"",
+    "dev:codegen-ui": "cd apps/codegen-ui && npm run dev",
+    "dev:all": "concurrently \"npm run dev:json-render\" \"npm run dev:vercel-ai\" \"npm run dev:codegen-ui\"",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "format": "prettier --write ."

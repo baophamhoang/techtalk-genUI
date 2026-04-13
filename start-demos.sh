@@ -69,7 +69,7 @@ start_demo "JSON-Render-Demo" "apps/json-render-demo" "3101"
 echo ""
 start_demo "Vercel-AI-Demo" "apps/vercel-ai-demo" "3000"
 echo ""
-start_demo "Multi-Model-Demo" "apps/multi-model-demo" "3003"
+start_demo "Codegen-UI" "apps/codegen-ui" "3003"
 
 echo ""
 echo "========================================"
