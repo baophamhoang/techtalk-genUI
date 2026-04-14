@@ -1,103 +1,61 @@
-# GenUI Techtalk - 3 Levels of Generative UI
+# GenUI Techtalk - 4 Levels of Generative UI
 
 Demo projects for techtalk "Post-Chat UI: Khi giao diện tự 'tiến hóa' theo hành vi người dùng"
 
 ## 📋 Overview
 
-3 progressive demos showing evolution from basic to advanced Generative UI:
+4 progressive demos showing evolution from basic to advanced Generative UI:
 
 1. **Basic:** JSON Render - Declarative UI from JSON schema
-2. **Medium:** Vercel AI SDK - Intent-based UI generation
-3. **Advanced:** Multi-Model Orchestration - Cost-optimized, enterprise-ready
+2. **Medium:** Tool Calling - AI composes UI by calling pre-built components
+3. **Advanced:** stream-ui-demo - One-shot UI composition with tool calling
+4. **Advanced:** agentic-ui - Multi-turn conversational refinement with memory
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- (Optional) OpenAI API key for Vercel AI SDK demo
-
-### Installation
-
-```bash
-# Clone and install dependencies
-git clone [your-repo-url]
-cd genUI-techtalk
-
-# Install root dependencies
-npm install
-
-# Install dependencies for each app
-cd apps/json-render-demo && npm install
-cd ../vercel-ai-demo && npm install
-cd ../multi-model-demo && npm install
-```
+- (Optional) OpenRouter API key for AI features
 
 ### Running Demos
-
-**Option 1: Run all demos (recommended for presentation)**
-
-```bash
-# From root directory
-npm run dev:all
-```
-
-**Option 2: Run individually**
 
 ```bash
 # Demo 1: JSON Render (Basic)
 cd apps/json-render-demo
 npm run dev
-# Open: http://localhost:3101
+# Open: http://localhost:3001
 
-# Demo 2: Vercel AI SDK (Medium)
-cd apps/vercel-ai-demo
+# Demo 2: Tool Calling (Medium)
+cd apps/stream-ui-demo
 npm run dev
-# Open: http://localhost:3000
+# Open: http://localhost:3005
 
-# Demo 3: Multi-Model (Advanced)
-cd apps/multi-model-demo
+# Demo 3 & 4: Agentic UI (Advanced)
+cd apps/agentic-ui
 npm run dev
-# Open: http://localhost:3003
+# Open: http://localhost:3006
 ```
 
 ## 🔧 API Keys Configuration
 
-### Demo 2: Vercel AI SDK
-
-This demo uses OpenAI API. Create `.env.local` in `apps/vercel-ai-demo`:
+Create `.env.local` in each app directory:
 
 ```bash
-OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENROUTER_API_KEY=sk-your-openrouter-key-here
 ```
-
-**Without API key:** The demo will use mock data and show the UI flow without actual AI generation.
-
-### Demo 3: Multi-Model Orchestration
-
-This is a **simulation** - no actual API keys needed. It demonstrates the orchestration logic and cost optimization strategies.
 
 ## 📁 Project Structure
 
 ```
-genUI-techtalk/
+genUI/
 ├── apps/
 │   ├── json-render-demo/     # Demo 1: Basic - JSON Render
-│   │   ├── src/
-│   │   ├── package.json
-│   │   └── ...
-│   ├── vercel-ai-demo/       # Demo 2: Medium - Vercel AI SDK
-│   │   ├── app/
-│   │   ├── package.json
-│   │   └── ...
-│   └── multi-model-demo/     # Demo 3: Advanced - Multi-Model
-│       ├── app/
-│       ├── package.json
-│       └── ...
+│   ├── stream-ui-demo/       # Demo 2 & 3: Tool Calling / One-shot Agentic
+│   └── agentic-ui/           # Demo 4: Multi-turn Agentic UI
+├── DEMO_GUIDE_VI.md          # Full demo guide
 ├── package.json              # Root package (workspaces)
-├── turbo.json               # Turborepo config
-├── SLIDE_DECK.md            # Presentation slides
-└── README.md               # This file
+└── README.md
 ```
 
 ## 🎯 Demo Details
@@ -105,123 +63,62 @@ genUI-techtalk/
 ### Demo 1: JSON Render (Basic)
 
 **Port:** 3001
-**Tech Stack:** React + Vite + json-render.dev
-**Key Features:**
 
+**Tech Stack:** React + Vite + json-render.dev
+
+**Key Features:**
 - Dynamic form generation from JSON schema
 - Real-time schema preview
 - Type-safe validation
 - No AI API key required
 
-**Use Case:** Form builders, CRUD interfaces, internal tools
+### Demo 2: Tool Calling (Medium)
 
-### Demo 2: Vercel AI SDK (Medium)
+**Port:** 3005
 
-**Port:** 3000
-**Tech Stack:** Next.js 15 + Vercel AI SDK + Tailwind CSS
+**Tech Stack:** Next.js 15 + AI SDK + Tailwind CSS
+
 **Key Features:**
+- AI composes UI by calling tool functions
+- Pre-built component registry
+- Consistent design system
+- No runtime code execution
 
-- Role-based dashboard (Admin/Manager/User)
-- Intent detection from context
-- Real-time UI generation
-- AI recommendations
+### Demo 3: stream-ui-demo (Advanced)
 
-**Use Case:** Adaptive dashboards, smart forms, personalized interfaces
+**Port:** 3005
 
-### Demo 3: Multi-Model Orchestration (Advanced)
+One-shot UI composition with tool calling.
 
-**Port:** 3003
-**Tech Stack:** Next.js 15 + Simulation Logic
-**Key Features:**
+### Demo 4: agentic-ui (Advanced)
 
-- Intelligent model routing (DeepSeek, GPT-4o, Claude, etc.)
-- Cost optimization (50-60% savings simulation)
-- Performance monitoring
-- Fallback strategies
+**Port:** 3006
 
-**Use Case:** Enterprise SaaS, budget-sensitive projects, vendor redundancy
+Multi-turn conversation with full context memory.
 
 ## 🎤 Presentation Notes
 
-### Talking Points for Each Demo
-
-**Demo 1 (Basic):**
-
+**Demo 1:**
 - "JSON as UI definition language"
 - "Declarative over imperative"
-- "Perfect for form-heavy applications"
 - "No AI prompting needed - just JSON"
 
-**Demo 2 (Medium):**
+**Demo 2:**
+- "AI as orchestrator, not code generator"
+- "Component registry = design system constraint"
+- "Fast, safe, predictable"
 
-- "Beyond prompting: context-aware UI"
-- "AI understands user role and task"
-- "Real-time adaptation without explicit commands"
-- "Vercel ecosystem integration"
-
-**Demo 3 (Advanced):**
-
-- "Enterprise-grade cost optimization"
-- "Multi-vendor strategy for reliability"
-- "Intelligent task-to-model routing"
-- "Scalable for high-volume applications"
-
-### Q&A Preparation
-
-**Common Questions:**
-
-1. "What about brand consistency with AI-generated UI?"
-   - Answer: Design system constraints, brand tokens, human approval workflow
-
-2. "Is this production-ready?"
-   - Demo 1: Yes, for specific use cases
-   - Demo 2: With proper API setup, yes
-   - Demo 3: Strategy is production-ready, implementation varies
-
-3. "Cost comparison?"
-   - Demo 3 shows 50-60% savings vs single-model approach
-
-## 🔧 Development
-
-### Adding New Demos
-
-```bash
-# Create new app in apps/ directory
-mkdir apps/new-demo
-cd apps/new-demo
-npm init -y
-# Add to workspaces in root package.json
-```
-
-### Building for Production
-
-```bash
-# Build all apps
-npm run build
-
-# Build specific app
-cd apps/vercel-ai-demo
-npm run build
-```
+**Demo 3 & 4:**
+- "Beyond one-shot generation"
+- "Conversation as refinement interface"
+- "Memory enables context-aware updates"
 
 ## 📚 Resources
 
-- [JSON Render Documentation](https://json-render.dev)
-- [Vercel AI SDK Documentation](https://sdk.vercel.ai/docs)
+- [Vercel AI SDK](https://sdk.vercel.ai/docs)
 - [OpenRouter API](https://openrouter.ai/docs)
-- [Next.js Documentation](https://nextjs.org/docs)
+- [Demo Guide](./DEMO_GUIDE_VI.md)
 
 ## 📄 License
 
 MIT
-
-## 👥 Contributors
-
-- Your Name - [@yourhandle](https://twitter.com/yourhandle)
-
-## 🙏 Acknowledgements
-
-- Vercel team for AI SDK
-- JSON Render team
-- OpenRouter for multi-model access
-- Layerproof team for real-world use cases
