@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { streamText, tool, convertToModelMessages } from 'ai';
+import { streamText, tool } from 'ai';
 import { z } from 'zod';
 
 const openrouter = createOpenAICompatible({
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openrouter('minimax/minimax-m2.5'),
-    messages: await convertToModelMessages(messages),
+    messages,
     system: "You are a helpful and friendly Generative UI assistant. Tương tác với người dùng bằng tiếng Việt một cách tự nhiên, thân thiện. ALWAYS provide a polite and helpful textual introduction or explanation alongside your tool calls. When a user asks for weather, flights, or stocks, you MUST use the appropriate tool to fetch the data, but ALSO write a kind message like 'Dạ, em gửi anh/chị thông tin thời tiết nhé' or 'Đây là diễn biến của thị trường hiện tại ạ'.",
     tools: {
       getWeather: tool({
