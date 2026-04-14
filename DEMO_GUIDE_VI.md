@@ -1,24 +1,24 @@
-# Hướng Dẫn So Sánh 3 Demo — Generative UI
+# Hướng Dẫn Demo — Generative UI
 
-> **Generative UI** là gì? Thay vì developer viết cứng từng màn hình, hệ thống *tự sinh ra* UI dựa trên dữ liệu, context hoặc ngôn ngữ tự nhiên. Ba demo dưới đây minh họa 3 mức độ "thông minh" của cách tiếp cận này.
+> **Generative UI là gì?** Thay vì lập trình viên hardcode từng màn hình, hệ thống *sinh ra* UI động dựa trên dữ liệu, ngữ cảnh, hoặc ngôn ngữ tự nhiên. Bốn demo dưới đây minh hoạ một dải đánh đổi: từ rule engine không có độ trễ đến AI agent hội thoại xây dựng và tinh chỉnh giao diện qua nhiều lượt.
 
 ---
 
-## Demo 1 — Rule Engine chọn JSON Schema có sẵn
+## Demo 1 — Rule Engine Chọn JSON Schema Có Sẵn
 
-### Cách hoạt động
+### Cách Hoạt Động
 
 ```
-User chọn context (industry + workflow)
+Người dùng chọn ngữ cảnh (ngành nghề + quy trình)
         ↓
-Rule Engine (if-else logic)
+Rule Engine (logic if-else)
         ↓
-Chọn 1 trong N schema đã định nghĩa trước
+Chọn 1 trong N schema có sẵn
         ↓
 JSON Schema Renderer → UI
 ```
 
-Toàn bộ logic nằm ở client. Không có AI, không có API call. Rule engine là một hàm `selectSchema(industry, workflow)` trả về object schema phù hợp từ một registry cố định.
+Toàn bộ logic chạy trên client. Không AI, không API call. Rule engine là hàm `selectSchema(industry, workflow)` trả về schema phù hợp từ một registry cố định.
 
 **Ví dụ rule:**
 ```ts
@@ -33,259 +33,533 @@ if (industry === "healthcare" && workflow === "booking") {
   "type": "object",
   "props": {
     "properties": {
-      "patientName": { "type": "string", "title": "Họ và tên bệnh nhân" },
+      "patientName": { "type": "string", "title": "Tên bệnh nhân" },
       "doctor":      { "type": "string", "title": "Bác sĩ", "enum": ["BS. Minh", "BS. Lan"] }
     },
-    "actionButtons": [{ "label": "Đặt lịch", "variant": "primary" }]
+    "actionButtons": [{ "label": "Đặt lịch khám", "variant": "primary" }]
   }
 }
 ```
 
-### Ưu điểm
-- **Tức thì** — không có độ trễ, không cần mạng
+### Ưu Điểm
+- **Tức thời** — không có độ trễ, không cần mạng
 - **Hoàn toàn dự đoán được** — cùng input luôn cho cùng output
-- **Không tốn chi phí API**
-- **An toàn tuyệt đối** — không có code nào được thực thi động
-- **Dễ audit và test** — có thể viết unit test cho từng case
+- **Zero chi phí API**
+- **Bảo mật tối đa** — không có thực thi code động
+- **Có thể kiểm tra và audit** — unit test có thể bao phủ mọi trường hợp
 
-### Nhược điểm
-- **Không linh hoạt** — cần N form = phải viết N schema trước
-- **Không scale được với yêu cầu đặc thù** — mỗi khách hàng muốn form riêng thì phải viết tay
-- **Chi phí bảo trì cao** — thêm ngành nghề mới = thêm code
+### Nhược Điểm
+- **Thiếu linh hoạt** — N form = N schema viết tay từ đầu
+- **Không scale với yêu cầu đặc thù** — mỗi khách hàng muốn form riêng là thêm code
+- **Chi phí bảo trì cao** — thêm ngành mới đòi hỏi thay đổi code
 
-### Use Cases phù hợp
-- Hệ thống ngân hàng, bảo hiểm — output phải được kiểm tra kỹ
+### Phù Hợp Nhất Khi
+- Ngân hàng, bảo hiểm, y tế — output phải được kiểm soát nghiêm ngặt
 - Ứng dụng cần hoạt động offline
-- Khi team muốn kiểm soát 100% những gì user thấy
-- MVP nhanh với số lượng form hữu hạn và đã biết trước
+- Team cần 100% kiểm soát những gì người dùng thấy
+- MVP với tập form đã biết và giới hạn
 
 ---
 
-## Demo 2 — AI tạo ra JSON Schema
+## Demo 2 — AI Sinh Ra JSON Schema
 
-### Cách hoạt động
+### Cách Hoạt Động
 
 ```
-User chọn context (industry + workflow)
+Người dùng chọn ngữ cảnh (ngành nghề + quy trình)
         ↓
-Gọi API: POST /api/generate-form
+API call: POST /api/generate-form
         ↓
-AI (streamObject / streamText) — sinh ra JSON schema
+AI (streamText / streamObject) — sinh ra JSON schema
         ↓
-JSON stream về FE theo thời gian thực
+JSON được stream về FE theo thời gian thực
         ↓
-Parse JSON → đưa vào cùng Renderer của Demo 1 → UI
+Parse JSON → đưa vào Renderer giống Demo 1 → UI
 ```
 
-AI được giao một JSON schema template và được yêu cầu điền vào cho phù hợp với context. Output của AI vẫn phải tuân theo cấu trúc mà Renderer hiểu.
+AI nhận một template JSON schema và được hướng dẫn điền vào cho ngữ cảnh đã cho. Output của AI vẫn phải tuân theo cấu trúc mà Renderer hiểu được.
 
 **Prompt gửi cho AI:**
 ```
-Generate a form schema for a healthcare business, workflow: "booking".
-Return ONLY this exact JSON structure: { "fields": [...], "actionButtons": [...] }
+Tạo form schema cho doanh nghiệp y tế, quy trình: "đặt lịch".
+Chỉ trả về đúng cấu trúc JSON này: { "fields": [...], "actionButtons": [...] }
 ```
 
-### Ưu điểm
-- **Linh hoạt hơn Demo 1** — AI xử lý mọi tổ hợp industry × workflow
-- **Vẫn an toàn** — JSON không thực thi, Renderer kiểm soát những gì được render
-- **Output có cấu trúc** — lỗi AI thì worst case là form rỗng, không phải crash app
+### Ưu Điểm
+- **Linh hoạt hơn Demo 1** — AI xử lý mọi tổ hợp ngành × quy trình
+- **Vẫn an toàn** — JSON không thực thi; Renderer kiểm soát hoàn toàn DOM
+- **Output có cấu trúc** — tệ nhất khi AI thất bại là form trống, không phải crash
 - **Tiết kiệm thời gian phát triển** — không cần viết tay từng schema
 
-### Nhược điểm
-- **Không dự đoán được** — cùng input có thể cho output khác nhau mỗi lần
-- **Vẫn bị giới hạn bởi Renderer** — AI không thể tạo ra component type nào Renderer chưa biết
+### Nhược Điểm
+- **Không tất định** — cùng input có thể cho output khác nhau mỗi lần
+- **Vẫn bị giới hạn bởi Renderer** — AI không thể tạo loại component mà Renderer không biết
 - **Độ trễ API** — thường 3–8 giây
-- **Chi phí token** — mỗi generation tiêu tốn API credits
+- **Chi phí token** — mỗi lần sinh ra tiêu thụ API credit
 
-### Use Cases phù hợp
-- SaaS platform phục vụ nhiều ngành nghề khác nhau (fintech, logistics, healthcare...)
-- Internal tools builder — nhân viên tự tạo form theo workflow riêng
-- Khi số lượng tổ hợp (industry × workflow) quá lớn để viết tay
-
----
-
-## Demo 3 — AI viết trực tiếp React Code
-
-### Cách hoạt động
-
-```
-User nhập mô tả bằng tiếng Việt
-        ↓
-Gọi API: POST /api/generate-ui
-        ↓
-AI (streamText) — viết React JSX code, stream về FE từng ký tự
-        ↓
-BE song song: tích lũy code → buildPreviewHtml() → lưu vào memory store
-        ↓
-Cuối stream: BE gắn __PREVIEW_ID__{id}__END__ vào cuối
-        ↓
-FE parse previewId → set <iframe src="/api/preview/{id}" sandbox="allow-scripts">
-        ↓
-Iframe load HTML từ BE → Babel transpile JSX → React render → Live UI
-```
-
-**Sơ đồ bảo mật của iframe:**
-```
-sandbox="allow-scripts" (không có allow-same-origin)
-        ↓
-Iframe nhận null origin
-        ↓
-Không thể đọc cookie/localStorage của app
-Không thể gọi API của app với session của user
-Không thể truy cập window.parent
-```
-
-### Ưu điểm
-- **Không giới hạn** — mọi UI đều có thể được mô tả và tạo ra
-- **Không cần Registry** — AI tự quyết định cần component gì
-- **Hiệu ứng demo mạnh** — user thấy code được viết ra từng ký tự
-- **Ngôn ngữ tự nhiên** — mô tả bằng tiếng Việt là đủ
-
-### Nhược điểm
-- **Chậm nhất** — React code dài hơn JSON nhiều (100–300 dòng vs 20–50 dòng)
-- **Tốn token nhất** — chi phí API cao hơn đáng kể
-- **Không ổn định** — AI có thể sinh code lỗi cú pháp
-- **Rủi ro bảo mật** — code được thực thi động (xem phần bảo mật bên dưới)
-- **Không audit được** — không thể biết trước output sẽ là gì
-
-### Use Cases phù hợp
-- Công cụ prototyping nội bộ
-- No-code / low-code builder cho developer
-- Demo, R&D, proof-of-concept
-- Trường hợp cần UI hoàn toàn độc đáo không thể template hóa
+### Phù Hợp Nhất Khi
+- Nền tảng SaaS phục vụ nhiều ngành (fintech, logistics, y tế...)
+- Công cụ xây dựng nội bộ — nhân viên tạo form cho quy trình của mình
+- Khi không gian tổ hợp (ngành × quy trình) quá lớn để viết tay
 
 ---
 
-## Bảng so sánh tổng hợp
+## Demo 3 — AI Gọi Tool để Ghép Các Component Có Sẵn
 
-| Tiêu chí | Demo 1 — Rule Engine | Demo 2 — AI Schema | Demo 3 — AI Code |
-|---|---|---|---|
-| **Tốc độ** | Tức thì | 3–8 giây | 10–30 giây |
-| **Linh hoạt** | Chỉ schema có sẵn | Mọi tổ hợp field | Mọi UI tưởng tượng được |
-| **Dự đoán được** | 100% | Thấp | Rất thấp |
-| **Chi phí API** | $0 | Thấp (JSON nhỏ) | Cao (code dài) |
-| **Bảo mật** | Cao nhất | Cao | Trung bình (cần sandbox) |
-| **Khi AI lỗi** | Không áp dụng | Form rỗng | Hiện lỗi đỏ trong iframe |
-| **Phù hợp production** | Có | Có (với validation) | Cần thêm hạ tầng |
-| **Công nghệ chính** | Rule engine + Registry | `streamText` + JSON.parse | `streamText` + Babel + iframe |
+### Cách Hoạt Động
+
+```
+Người dùng mô tả UI bằng ngôn ngữ tự nhiên
+        ↓
+POST /api/compose-ui
+        ↓
+AI nhận registry tool cố định (showProductCard, showForm, showStatsGrid, showDataTable, showAlertBanner)
+        ↓
+AI gọi các tool phù hợp, điền tham số (tên, giá, trường, số liệu...)
+        ↓
+Server gửi tool call đã hoàn thành dưới dạng marker __TOOL__{json}__ENDTOOL__
+        ↓
+FE parse marker → map tên tool → render component React tương ứng trực tiếp
+        ↓
+Component xuất hiện ngay — không iframe, không sandbox, không compile code
+```
+
+AI không bao giờ viết code. Nó chỉ quyết định *component nào* cần dùng và *dữ liệu gì* để điền vào. Bản thân các component luôn là cùng một code React, do developer bảo trì.
+
+**Tool call từ AI (ví dụ):**
+```json
+{
+  "tool": "showStatsGrid",
+  "args": {
+    "stats": [
+      { "label": "Tổng đơn hàng", "value": 125, "trend": "up", "trendValue": "+12% so với tuần trước" },
+      { "label": "Doanh thu",      "value": 42500000, "unit": "đ", "trend": "up" }
+    ]
+  }
+}
+```
+
+**Mapping component ở FE:**
+```tsx
+function RenderedTool({ tool, args }) {
+  switch (tool) {
+    case "showStatsGrid":    return <StatsGrid {...args} />;
+    case "showProductCard":  return <ProductCard {...args} />;
+    case "showForm":         return <FormPanel {...args} />;
+    case "showDataTable":    return <DataTable {...args} />;
+    case "showAlertBanner":  return <AlertBanner {...args} />;
+  }
+}
+```
+
+### Ưu Điểm
+- **Nhanh** — AI chỉ sinh ~50 token tham số tool, không phải 300 dòng code. Phản hồi trong ~3–5s
+- **Nhất quán design system** — mọi component đến từ cùng thư viện, luôn trông giống nhau
+- **Không sandbox** — component render trực tiếp trong React, không iframe, không null-origin
+- **Không Babel** — không bước compile code runtime
+- **Đáng tin cậy** — tham số JSON có cấu trúc, không phải code tự do có thể có lỗi cú pháp
+- **An toàn** — AI không thể inject HTML tuỳ ý hay chạy code tuỳ ý
+
+### Nhược Điểm
+- **Bị giới hạn bởi registry** — AI chỉ dùng được component mà developer đã xây dựng sẵn
+- **Tham số phải khớp schema** — AI không thể tạo prop mới; nó điền vào prop có sẵn
+- **Thêm loại UI mới đòi hỏi developer** — mỗi component mới cần định nghĩa tool + component React
+
+### Phù Hợp Nhất Khi
+- Dashboard nội bộ xây từ design system nhất quán
+- "AI assistant" hướng đến khách hàng hiển thị UI phù hợp (product card, form, tóm tắt)
+- Ứng dụng mà tính nhất quán design là không thể thỏa hiệp
+- Team muốn tính linh hoạt của AI mà không từ bỏ kiểm soát component
 
 ---
 
-## Câu hỏi thường gặp (FAQ)
+## Demo 4 — Agentic UI (Hội Thoại, Đa Lượt)
 
-### Về kiến trúc chung
+### Cách Hoạt Động
 
-**Q: Generative UI khác gì AI Chatbot thông thường?**
+```
+Người dùng gửi tin nhắn (văn bản)
+        ↓
+Toàn bộ lịch sử hội thoại gửi đến POST /api/chat
+        ↓
+AI dùng cùng registry tool như Demo 3
+        ↓
+AI trả về: văn bản tuỳ chọn + tool call
+        ↓
+Server trả { text, toolCalls[] } dạng JSON
+        ↓
+FE thêm tin nhắn assistant mới vào luồng chat
+  → văn bản render dưới dạng chat bubble
+  → toolCalls[] render dưới dạng component inline bên dưới bubble
+        ↓
+Người dùng trả lời → lịch sử tăng lên → AI có thể sửa, thêm, hoặc xoá component
+```
 
-Chatbot trả về văn bản. Generative UI trả về *cấu trúc có thể render được* — JSON schema, React component, hay HTML. User không đọc output, họ *tương tác* với nó. Đây là sự khác biệt cốt lõi.
+Điểm khác biệt chính so với Demo 3: AI có **bộ nhớ**. Nó biết mình đã xây dựng gì. Khi bạn nói "bỏ cái cảnh báo đi" hoặc "thêm hàng vào bảng", AI hiểu tham chiếu và cập nhật tương ứng.
+
+**Ví dụ đa lượt:**
+```
+Người dùng: "Xây cho tôi dashboard quản lý đơn hàng"
+AI:         [StatsGrid — 4 chỉ số] [DataTable — 5 đơn hàng]
+
+Người dùng: "Thêm cảnh báo tồn kho thấp"
+AI:         [AlertBanner — warning] [các component trước giữ nguyên]
+
+Người dùng: "Đổi chỉ số doanh thu sang theo tuần thay vì tháng"
+AI:         [StatsGrid cập nhật — doanh thu theo tuần]
+```
+
+### Ưu Điểm
+- **Vòng lặp tinh chỉnh** — người dùng có thể lặp lại UI bằng ngôn ngữ bình thường
+- **Nhận biết ngữ cảnh** — AI hiểu "cái bảng đó", "thẻ đầu tiên", "số liệu từ trước"
+- **UX tự nhiên nhất** — hội thoại là mô hình quen thuộc
+- **Vẫn dùng design system** — cùng registry component, cùng tính nhất quán như Demo 3
+- **Không sandbox** — cùng cách render như Demo 3
+
+### Nhược Điểm
+- **State server phức tạp hơn** — lịch sử phải duy trì ở client và gửi mỗi lượt
+- **Chi phí token tăng theo hội thoại** — mỗi lượt gửi toàn bộ lịch sử
+- **AI có thể "quên" trong hội thoại dài** — giới hạn context window vẫn áp dụng
+- **Khó test hơn** — luồng đa lượt không tất định khó viết unit test
+
+### Phù Hợp Nhất Khi
+- AI assistant giúp xây báo cáo, form, hoặc dashboard một cách tương tác
+- Sản phẩm "nói chuyện với dữ liệu" nơi người dùng lặp lại trên visualization
+- Agent hỗ trợ hiển thị UI phù hợp theo ngữ cảnh (ví dụ: form hoàn tiền sau khiếu nại)
+- Bất kỳ sản phẩm nào mà ý định người dùng tiến hoá trong phiên
 
 ---
 
-**Q: Tại sao Demo 1 và 2 dùng JSON Schema thay vì để AI viết luôn HTML?**
+## Bảng So Sánh
 
-JSON Schema là một lớp abstraction an toàn. Renderer kiểm soát 100% những gì được đưa lên DOM, nên không có nguy cơ XSS. Ngoài ra, schema dễ validate, dễ lưu trữ, và dễ migrate sau này.
+| Tiêu chí | Demo 1 — Rule Engine | Demo 2 — AI Schema | Demo 3 — Tool Calling | Demo 4 — Agentic |
+|---|---|---|---|---|
+| **Tốc độ** | Tức thời | 3–8s | 3–5s | 3–5s mỗi lượt |
+| **Tính linh hoạt** | Chỉ schema định sẵn | Mọi tổ hợp trường | Mọi component trong registry | Như Demo 3 + tinh chỉnh lặp |
+| **Khả năng dự đoán** | 100% | Thấp | Trung bình (tên tool cố định) | Thấp (đa lượt) |
+| **Chi phí API** | $0 | Thấp (JSON nhỏ) | Thấp (~50 token) | Trung bình (tăng theo lịch sử) |
+| **Nhất quán design** | ✅ Cao | ✅ Cao | ✅ Cao | ✅ Cao |
+| **Bảo mật** | Cao nhất | Cao | Cao (không sandbox) | Cao (không sandbox) |
+| **sandbox / iframe** | ❌ Không | ❌ Không | ❌ Không | ❌ Không |
+| **Đa lượt** | ❌ | ❌ | ❌ | ✅ |
+| **Khi AI thất bại** | N/A | Form trống | Không render component | Thông báo lỗi trong chat |
+| **Production-ready** | Có | Có (cần validation) | Có | Có (cần quản lý lịch sử) |
+| **Công nghệ chính** | Rule engine + Registry | `streamText` + JSON.parse | OpenAI tool calling + Registry | Tool calling + chat history |
+
+---
+
+## ⚠️ Các Cách Tiếp Cận Đã Loại Bỏ
+
+Các cách tiếp cận sau đã được thử nghiệm và loại bỏ. Phần này giữ lại để tham khảo, không phải để khuyến nghị.
+
+---
+
+### ❌ Đã Loại Bỏ — AI Viết Code React JSX (iframe)
+
+```
+Người dùng mô tả UI
+        ↓
+AI sinh ra toàn bộ code component React (~200–400 token JSX)
+        ↓
+Server bọc code trong trang HTML với React CDN + Babel CDN
+        ↓
+Lưu trang vào memory → /api/preview/{id}
+        ↓
+FE render <iframe src="/api/preview/{id}" sandbox="allow-scripts" />
+        ↓
+Babel compile JSX ở runtime bên trong iframe → React render
+```
+
+**Vì sao chúng ta không dùng nữa:**
+
+| Vấn đề | Tác động |
+|---|---|
+| Chậm (10–30s) | AI phải sinh 200–400 token JSX hợp lệ về cú pháp — nhiều hơn nhiều so với tham số tool (~50 token) |
+| UI không nhất quán | Mỗi lần sinh cho styling, spacing, và lựa chọn component khác nhau — không có design system |
+| Compile runtime | Babel chạy bên trong iframe tốn thêm 1–3s và có thể thất bại với JSX edge-case |
+| Giới hạn sandbox | `sandbox="allow-scripts"` tạo null origin — iframe không thể giao tiếp với app cha |
+| Code có thể thất bại lặng lẽ | Lỗi cú pháp, import thiếu, hoặc prop sai tạo ra iframe trống hoặc hỏng |
+| Không viable cho production | Code AI-generated chạy động đòi hỏi domain riêng, pipeline kiểm duyệt nội dung, và validation output |
+
+**So với Demo 3 (Tool Calling):** Cùng mục tiêu linh hoạt, nhưng Demo 3 đạt được trong ~3–5s với zero thực thi code và nhất quán design system hoàn toàn. Ràng buộc registry (AI chỉ chọn được component có sẵn) là đánh đổi xứng đáng cho độ tin cậy và tốc độ đạt được.
+
+---
+
+### ❌ Đã Loại Bỏ — Progressive HTML + Vanilla JS (Two-phase iframe)
+
+```
+Người dùng mô tả UI
+        ↓
+AI sinh ra HTML template trước (chỉ cấu trúc, không JS)
+        ↓
+Server phát hiện delimiter thẻ <script> giữa stream
+        ↓
+Lưu trang chỉ-HTML → gửi marker __TEMPLATE_ID__
+        ↓
+FE render Layer 1 iframe (template tĩnh) ngay lập tức
+        ↓
+AI tiếp tục sinh ra block <script> (vanilla JS tương tác)
+        ↓
+Server lưu trang HTML+JS hoàn chỉnh → gửi marker __PREVIEW_ID__
+        ↓
+FE fade in Layer 2 iframe (tương tác) đè lên Layer 1
+```
+
+Cách tiếp cận này là nỗ lực sửa vấn đề màn hình trống của cách tiếp cận JSX bằng cách hiển thị preview tĩnh sớm hơn.
+
+**Vì sao chúng ta không dùng nữa:**
+
+| Vấn đề | Tác động |
+|---|---|
+| Vẫn chậm (8–15s tổng) | Sinh hai pha chỉ trải đều thời gian chờ — không giảm tổng token sinh ra |
+| Hai iframe = phức tạp gấp đôi | Logic crossfade, quản lý z-index, race condition giữa các lần chuyển layer |
+| Vẫn là iframe | Cùng giới hạn null-origin, sandbox và bị ngắt kết nối với app |
+| Vanilla JS không nhất quán | Không có design system, mỗi lần sinh trông khác nhau |
+| Delimiter dễ hỏng | Phát hiện `<script>` giữa stream là heuristic — AI output không đúng format làm hỏng việc split |
+| Cải thiện UX chỉ là bề ngoài | Người dùng thấy *gì đó* sớm hơn, nhưng đó là skeleton tĩnh — không phải UI thực |
+
+**So với Demo 3 (Tool Calling):** Cách tiếp cận hai pha đổi một bộ vấn đề (màn hình trống) lấy bộ khác (phức tạp, dễ hỏng). Demo 3 loại bỏ vấn đề hoàn toàn — component render trực tiếp trong React không iframe, không logic hai pha, và tương tác đầy đủ ngay từ lần render đầu tiên.
+
+---
+
+## FAQ
+
+### Tổng Quan
+
+**Q: Generative UI khác gì AI chatbot thông thường?**
+
+Chatbot trả về văn bản. Generative UI trả về *thứ gì đó có thể render* — JSON schema, cây component, hoặc tập tool call có cấu trúc. Người dùng không *đọc* output; họ *tương tác* với nó. Đó là sự khác biệt cốt lõi.
+
+---
+
+**Q: Tại sao dùng registry component (Demo 3 & 4) thay vì để AI viết tự do?**
+
+Output AI không bị ràng buộc (HTML, JSX) không tất định, sinh chậm, và đòi hỏi thực thi runtime — tạo ra vấn đề bảo mật, độ tin cậy, và nhất quán. Registry đảo ngược mô hình: developer định nghĩa những gì có thể, AI quyết định dùng gì. Đây là cùng triết lý như cho designer một component library thay vì canvas trắng.
 
 ---
 
 **Q: `streamText` vs `streamObject` — khi nào dùng cái nào?**
 
-- **`streamText`**: Khi output là văn bản tự do hoặc code. FE nhận raw string, tự xử lý.
-- **`streamObject`**: Khi output cần khớp một schema Zod cụ thể. SDK tự validate và chỉ emit partial objects hợp lệ. Demo 2 trong thực tế nên dùng `streamObject` — demo này dùng `streamText` để minh họa việc parse thủ công.
-
----
-
-### Về Demo 1
-
-**Q: Rule engine có thể scale được không khi số lượng schema tăng lên?**
-
-Được, nhưng đây là vấn đề của mọi rule engine — độ phức tạp tăng tuyến tính theo số case. Giải pháp thực tế: lưu schema trong database thay vì hardcode, dùng tag/category để filter. Rule engine vẫn là code, chỉ là data source được externalize.
-
----
-
-**Q: Có thể kết hợp Demo 1 và 2 không?**
-
-Được. Pattern phổ biến: Demo 1 cho các workflow phổ biến (80% cases), Demo 2 cho edge case hoặc custom request. Đây là "AI as fallback" — dùng rule engine trước, nếu không tìm được schema phù hợp mới gọi AI.
-
----
-
-### Về Demo 2
-
-**Q: Nếu AI trả về JSON sai format thì sao?**
-
-Hiện tại: try/catch khi parse, nếu lỗi thì form không render. Trong production: nên dùng `streamObject` với Zod schema để SDK tự validate. Nếu dùng `streamText`, cần thêm bước sanitize và validate trước khi đưa vào Renderer.
-
----
-
-**Q: Tại sao vẫn còn bị giới hạn bởi Renderer nếu AI đã "thông minh" hơn?**
-
-Vì Renderer chỉ biết render những component type nó đã được lập trình: `string`, `number`, `boolean`, `object`. AI có thể muốn tạo một date picker hay file upload, nhưng nếu Renderer chưa có component tương ứng thì field đó bị bỏ qua. Demo 3 giải quyết vấn đề này bằng cách bỏ Renderer hoàn toàn.
-
----
-
-**Q: Streaming JSON có thực sự hữu ích ở đây không?**
-
-Với Demo 2, streaming cho phép FE bắt đầu parse và render ngay khi nhận được đủ JSON (progressive render). Tuy nhiên, vì phải parse JSON hoàn chỉnh, thực tế thì phải đợi stream kết thúc. Lợi ích thực sự là UX — user thấy JSON "chạy ra" trong panel bên phải, thay vì đợi chờ rồi mới thấy cả form xuất hiện.
+- **`streamText`**: Khi output là văn bản tự do hoặc code. FE nhận string thô.
+- **`streamObject`**: Khi output phải khớp Zod schema cụ thể. SDK validate và emit chỉ các object partial hợp lệ về cấu trúc. Ưu tiên `streamObject` trong production cho Demo 2.
 
 ---
 
 ### Về Demo 3
 
-**Q: Tại sao phải đợi code xong mới thấy preview?**
+**Q: Điều gì xảy ra nếu AI gọi tool không tồn tại trong registry?**
 
-Babel compile toàn bộ script một lần. JSX chưa hoàn chỉnh sẽ throw syntax error. Không có cách render "partial React component". Giải pháp duy nhất là đợi stream kết thúc. Animation code stream bên trái là cách giữ UX không bị "chết" trong lúc chờ.
-
----
-
-**Q: Iframe có thể ăn cắp dữ liệu của app không?**
-
-Với `sandbox="allow-scripts"` và **không có** `allow-same-origin`, iframe nhận **null origin** — không thể đọc cookie, localStorage của app, không thể gọi API với session của user. Đây là cơ chế bảo vệ tương tự Claude Artifacts.
-
-Điều sandbox **không** ngăn được: code trong iframe vẫn có thể `fetch()` đến server bên ngoài. Nếu user nhập vào form do AI tạo ra, dữ liệu đó có thể bị gửi đi ngoài ý muốn. Giải pháp production: thêm `Content-Security-Policy: connect-src 'none'` vào response header của preview endpoint.
+Switch `RenderedTool` rơi vào `return null` — không có gì render. Không crash, không màn hình trống. Panel log tool call bên trái hiển thị tên tool không rõ để developer phát hiện khoảng trống trong registry.
 
 ---
 
-**Q: Claude cũng dùng cách này — họ xử lý bảo mật thế nào?**
+**Q: Tại sao bypass AI SDK và gọi trực tiếp OpenRouter qua `fetch`?**
 
-Claude phục vụ Artifacts từ một domain riêng biệt (`artifacts.claude.ai`) thay vì cùng domain với app. Cross-origin thật sự, không chỉ là null origin. Ngoài ra, Anthropic chạy output qua content moderation trước khi render, và không có user data nào tồn tại trong execution context của artifact. Vercel v0 và bolt.new dùng WebContainers (Node.js chạy trong WebAssembly) — isolation ở mức OS process, mạnh hơn iframe nhiều.
-
----
-
-**Q: Demo 3 có thể dùng production không?**
-
-Được, nhưng cần thêm:
-1. **Separate domain** cho preview (không cùng origin với app)
-2. **Content moderation** trên AI output trước khi store
-3. **Rate limiting** trên `/api/generate-ui`
-4. **Timeout** cho generation (tránh request treo)
-5. **Không đưa sensitive data** vào execution context của iframe
+Vercel AI SDK (tính đến v6 / `@ai-sdk/openai-compatible` v2) có bug serialization schema nơi tham số tool Zod được gửi đến OpenAI với `type: "None"` — gây lỗi 400. Gọi trực tiếp OpenAI-compatible API với JSON schema thuần túy tránh được bug hoàn toàn và đơn giản hơn để debug.
 
 ---
 
-**Q: Tại sao lưu HTML trên BE thay vì để FE tự build và dùng srcDoc?**
+**Q: AI có thể inject nội dung độc hại qua tham số tool không?**
 
-Hai lý do:
-1. **Kiến trúc sạch hơn**: FE không cần biết cách build HTML preview, không cần import Babel config hay sanitize logic
-2. **Preview có URL thật**: `/api/preview/{id}` có thể được share, mở tab mới, hoặc embed ở nơi khác
-
-Bảo mật thực tế là như nhau — cả hai approach đều đạt null origin với `sandbox="allow-scripts"`.
+AI chỉ có thể điền giá trị tham số (string, number, array). Những giá trị đó được truyền làm prop cho component React kiểm soát chính xác cách render. String độc hại trong `name` trở thành `{name}` trong JSX — React escape tự động. Không `dangerouslySetInnerHTML`, không `eval`, không thực thi script.
 
 ---
 
-## Lộ trình phát triển tự nhiên
+### Về Demo 4
+
+**Q: Demo 4 khác Demo 3 như thế nào — chẳng phải cả hai đều dùng tool calling?**
+
+Cùng cơ chế bên dưới, mô hình tương tác khác. Demo 3 là một lần: một prompt → một tập component. Demo 4 là hội thoại: AI nhận toàn bộ lịch sử tin nhắn mỗi lượt và có thể tham chiếu, sửa đổi, hoặc mở rộng những gì đã xây. UX chuyển từ "sinh ra" sang "cộng tác."
+
+---
+
+**Q: Làm sao ngăn lịch sử hội thoại trở nên quá dài?**
+
+Các tuỳ chọn trong production: (1) sliding window — chỉ giữ N lượt cuối; (2) summarization — định kỳ yêu cầu AI tóm tắt trạng thái hội thoại; (3) explicit state — serialize cây component hiện tại dưới dạng dữ liệu có cấu trúc và re-inject ở đầu mỗi lượt thay vì phát lại toàn bộ lịch sử.
+
+---
+
+**Q: Demo 4 có thể dùng để xây công cụ no-code đầy đủ không?**
+
+Có, với các bổ sung: persist hội thoại vào database, cho phép người dùng "lưu" layout (snapshot cây component), thêm undo/redo stack, và cho phép người dùng chia sẻ layout qua URL. AI vẫn là "compiler" — dịch ngôn ngữ tự nhiên thành cấu hình component.
+
+---
+
+## Áp Dụng Vào Dự Án Thực Tế
+
+Mỗi pattern dưới đây có thể tích hợp độc lập vào stack Next.js / React hiện có. Không cần rewrite toàn bộ app.
+
+---
+
+### Pattern 1 — Rule Engine + JSON Schema Renderer
+
+**Khi nào dùng:** Số lượng form/màn hình biết trước, cần audit, hoặc offline.
+
+**Các bước tối thiểu:**
+
+```
+1. Tạo schema registry
+   └── lib/schemas.ts  — export SCHEMAS object, mỗi key là 1 schema JSON
+
+2. Viết rule function
+   └── lib/selectSchema.ts
+       export function selectSchema(context: Context): Schema {
+         if (context.industry === "healthcare") return SCHEMAS.healthcareBooking;
+         // ...
+       }
+
+3. Copy renderer
+   └── components/SchemaRenderer.tsx  — nhận schema, render form/card/table
+       (có thể dùng thẳng từ Demo 1)
+
+4. Dùng trong page
+   const schema = selectSchema(userContext);
+   return <SchemaRenderer schema={schema} />;
+```
+
+**Mở rộng:** Thêm schema mới = thêm 1 entry vào `SCHEMAS` + 1 dòng if trong `selectSchema`. Không đụng renderer.
+
+---
+
+### Pattern 2 — AI Sinh JSON Schema
+
+**Khi nào dùng:** Không gian input quá lớn để viết tay (nhiều ngành × nhiều quy trình).
+
+**Các bước tối thiểu:**
+
+```
+1. Định nghĩa output schema với Zod
+   └── lib/formSchema.ts
+       export const FormSchema = z.object({
+         fields: z.array(z.object({ label, type, options? })),
+         actionButtons: z.array(z.object({ label, variant })),
+       });
+
+2. Tạo route API
+   └── app/api/generate-form/route.ts
+       const result = await streamObject({
+         model: openai("gpt-4o-mini"),
+         schema: FormSchema,
+         prompt: `Tạo form cho ${industry}, quy trình: ${workflow}`,
+       });
+       return result.toTextStreamResponse();
+
+3. FE nhận stream, render bằng renderer có sẵn
+   └── const { object } = useObject({ api: "/api/generate-form", schema: FormSchema });
+       return object ? <SchemaRenderer schema={object} /> : <Skeleton />;
+```
+
+**Lưu ý production:** Thêm fallback về Demo 1 khi AI timeout, và validate output trước khi render.
+
+---
+
+### Pattern 3 — Tool Calling + Component Registry
+
+**Khi nào dùng:** Muốn AI xây UI phong phú, nhất quán design system, không cần sandbox.
+
+**Các bước tối thiểu:**
+
+```
+1. Xây component library (hoặc dùng design system có sẵn)
+   └── components/
+       ├── ProductCard.tsx
+       ├── StatsGrid.tsx
+       ├── DataTable.tsx
+       └── ... (mỗi component = 1 "slot" AI có thể chọn)
+
+2. Định nghĩa tool registry (plain JSON, KHÔNG dùng Zod với AI SDK*)
+   └── lib/tools.ts
+       export const TOOLS = [
+         { type: "function", function: {
+           name: "showStatsGrid",
+           description: "Render stats cards",
+           parameters: { type: "object", properties: { stats: { type: "array", ... } } }
+         }},
+         // 1 entry = 1 component
+       ];
+
+3. Tạo route API
+   └── app/api/compose-ui/route.ts
+       // Gọi thẳng fetch() đến OpenAI/OpenRouter — KHÔNG qua AI SDK*
+       const res = await fetch("https://api.openai.com/v1/chat/completions", {
+         body: JSON.stringify({ model: "gpt-4o-mini", tools: TOOLS, tool_choice: "required", ... })
+       });
+       // Parse tool_calls, stream markers về FE
+
+4. FE parse markers + render
+   └── const TOOL_RE = /__TOOL__([\s\S]*?)__ENDTOOL__/g;
+       // mỗi match → { tool, args } → <RenderedTool tool={tool} args={args} />
+```
+
+> **\* Lưu ý quan trọng:** Vercel AI SDK v6 có bug serialization — Zod tool schemas bị gửi với `type: "None"` gây lỗi 400. Giải pháp: bypass SDK, dùng `fetch` trực tiếp với plain JSON tool schemas.
+
+**Mở rộng registry:** Thêm component mới = thêm 1 entry vào `TOOLS` + 1 case trong switch `RenderedTool`. AI tự học dùng tool mới qua description.
+
+---
+
+### Pattern 4 — Agentic (Multi-turn Refinement)
+
+**Khi nào dùng:** Người dùng cần lặp lại UI qua hội thoại, không chỉ sinh một lần.
+
+**Các bước tối thiểu** (build on top of Pattern 3):
+
+```
+1. Chuyển state FE sang messages[]
+   const [messages, setMessages] = useState<Message[]>([]);
+   // Message = { role, content, toolCalls? }
+
+2. Gửi full history mỗi request
+   const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
+   fetch("/api/chat", { body: JSON.stringify({ messages: apiMessages }) });
+
+3. Đổi tool_choice: "required" → "auto"
+   // AI có thể trả lời bằng text, tools, hoặc cả hai
+   // Khi user hỏi "bỏ cái cảnh báo đi" → AI trả text + tool mới
+
+4. Route trả về { text, toolCalls[] } thay vì stream
+   return Response.json({ text: message.content, toolCalls });
+
+5. FE append tin nhắn mới vào thread
+   // text → chat bubble
+   // toolCalls → components render inline bên dưới bubble
+```
+
+**Quản lý history dài:** Sliding window (giữ 10 lượt cuối) hoặc inject component state hiện tại dưới dạng JSON vào system prompt thay vì replay toàn bộ lịch sử.
+
+---
+
+### Checklist Chung Khi Tích Hợp
+
+| Bước | Demo 1 | Demo 2 | Demo 3 | Demo 4 |
+|---|:---:|:---:|:---:|:---:|
+| Định nghĩa schema/tool registry | ✅ (tay) | ✅ (Zod) | ✅ (JSON) | ✅ (JSON) |
+| Route API server-side | ❌ | ✅ | ✅ | ✅ |
+| Xử lý streaming | ❌ | ✅ | ✅ | ❌ (JSON) |
+| Component renderer | ✅ | ✅ | ✅ | ✅ |
+| Quản lý conversation state | ❌ | ❌ | ❌ | ✅ |
+| Fallback khi AI fail | N/A | Form trống | `return null` | Lỗi trong chat |
+| Cần OPENROUTER_API_KEY | ❌ | ✅ | ✅ | ✅ |
+
+---
+
+## Con Đường Tiến Hoá Tự Nhiên
 
 ```
 Demo 1 (Rule Engine)
-    ↓  "Quá nhiều schema phải viết tay"
+    ↓  "Quá nhiều schema để viết tay"
 Demo 2 (AI Schema)
-    ↓  "Renderer vẫn giới hạn, muốn tạo UI phức tạp hơn"
-Demo 3 (AI Code)
-    ↓  "Cần production-ready với security & reliability"
-Production Architecture:
-  - Separate preview domain
-  - Output moderation pipeline
-  - Schema validation layer (Demo 2 style) cho common cases
-  - Code generation (Demo 3 style) cho edge cases
-  - Rate limiting, abuse monitoring
+    ↓  "Renderer còn giới hạn, muốn component phong phú hơn"
+Demo 3 (Tool Calling)
+    ↓  "Người dùng muốn lặp lại, không chỉ sinh một lần"
+Demo 4 (Agentic)
+    ↓  "Cần đưa lên production"
+Kiến Trúc Production:
+  - Pattern Demo 1 cho các luồng tần suất cao, cần audit
+  - Pattern Demo 2 cho form linh hoạt nhưng có cấu trúc
+  - Pattern Demo 3/4 cho bề mặt UI tương tác và dashboard
+  - Lịch sử hội thoại bền vững (database)
+  - Versioning registry component (registry v2, v3...)
+  - Metering sử dụng, rate limiting, giám sát lạm dụng
 ```
 
-Ba demo không phải là "cái sau tốt hơn cái trước" — chúng là ba **trade-off khác nhau**. Hệ thống production thực tế thường kết hợp cả ba: rule engine cho core flows, AI schema cho flexibility, AI code cho edge cases.
+Demo 1–4 không phải "cái sau tốt hơn cái trước" — chúng đại diện cho **các đánh đổi khác nhau**. Hệ thống production thực tế thường kết hợp nhiều cách tiếp cận: rule engine cho luồng cốt lõi, AI schema cho tính linh hoạt, tool calling cho bề mặt UI phong phú, vòng lặp agentic cho trải nghiệm lặp lại.

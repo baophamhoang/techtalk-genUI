@@ -34,11 +34,36 @@ Khán giả thường nghĩ GenUI chỉ dành cho Chatbot. Hãy phá vỡ địn
 
 ---
 
-## Demo 3: Multi-Model Capabilities & The Ecosystem
-*(Chỗ trống dành cho kịch bản Demo 3: Multi-Model)*
-- **Vấn đề giải quyết:** Bị trói buộc vào một hệ sinh thái (Vendor Lock-in). Hôm nay OpenAI thông minh nhất, ngày mai Claude của Anthropic rẻ hơn. Nếu bạn hard-code UI vào riêng OpenAI, bạn sẽ không đổi sang Claude được.
-- **Giải pháp:** Vì kiến trúc GenUI (từ Demo 1) chuẩn hóa hoàn toàn giao diện qua JSON, Backend có thể tuỳ ý Swap các model GPT-4, Claude, Gemini. Frontend hoàn toàn không quan tâm ai tạo ra Schema. Giao diện vẫn render hoàn hảo.
-- **Kịch bản Demo:** (Bạn sẽ trình diễn tính năng này tại đây)
+## Demo 3: Tool Calling — AI Chọn Component, Không Viết Code
+
+**Vấn đề giải quyết:** Demo 2 vẫn bị giới hạn bởi renderer — AI chỉ sinh được field text/select. Muốn rich UI (product card, data table, stats dashboard) thì cần approach khác.
+
+**Giải pháp:** AI không viết code. AI *chọn component* từ registry có sẵn và điền tham số. Developer kiểm soát toàn bộ component code; AI chỉ quyết định dùng cái nào.
+
+**Cách dẫn dắt:**
+- Gõ: *"Dashboard quản lý đơn hàng tuần này"* → chỉ vào panel trái: JSON tool call, không phải JSX
+- Chỉ vào component xuất hiện: "3 giây. React component thật — không iframe, không sandbox"
+- Gõ: *"Thêm cảnh báo hàng sắp hết"* → chỉ vào AlertBanner xuất hiện thêm
+
+**Câu Chốt Demo 3:**
+> *"Demo 2 để AI sinh schema — AI vẫn quyết định cấu trúc. Demo 3 đảo ngược: developer quyết định component nào được phép tồn tại, AI chỉ chọn và điền dữ liệu. Đó là lý do nó nhanh hơn, nhất quán hơn, và an toàn hơn."*
+
+---
+
+## Demo 4: Agentic UI — Hội Thoại Đa Lượt
+
+**Vấn đề giải quyết:** Demo 3 là một lần — một prompt, một output, xong. Nếu user muốn chỉnh sửa, phải bắt đầu lại từ đầu. Không có bộ nhớ.
+
+**Giải pháp:** Gửi toàn bộ lịch sử hội thoại mỗi lượt. AI biết mình đã xây gì và có thể tinh chỉnh dựa trên yêu cầu tiếp theo — thêm component, sửa giá trị, bỏ thứ không cần.
+
+**Cách dẫn dắt:**
+- Turn 1: *"Dashboard quản lý đơn hàng tuần này"* → AI sinh StatsGrid + DataTable
+- Turn 2: *"Thêm cảnh báo tồn kho thấp"* → AI thêm AlertBanner, giữ nguyên cái trước
+- Turn 3: *"Đổi chỉ số doanh thu sang theo tuần"* → AI update đúng metric đó
+- Chỉ vào: "Cùng component registry như Demo 3 — chỉ khác là AI có bộ nhớ hội thoại"
+
+**Câu Chốt Demo 4:**
+> *"Demo 3 là generate. Demo 4 là collaborate. Cùng một engine, cùng một registry — nhưng bây giờ user có thể nói 'bỏ cái cảnh báo đi' hay 'thêm cột giá vào bảng' và AI hiểu ngữ cảnh."*
 
 ---
 
