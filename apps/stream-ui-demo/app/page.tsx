@@ -141,7 +141,7 @@ export default function Home() {
           </div>
           <span className="text-xs font-bold px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full border border-violet-200 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-            TOOL CALLING · GPT-4O-MINI
+            TOOL CALLING · MINIMAX M2.7
           </span>
         </div>
 

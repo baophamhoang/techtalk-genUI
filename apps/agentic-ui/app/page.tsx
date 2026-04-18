@@ -125,7 +125,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              AGENTIC · GPT-4O-MINI
+              AGENTIC · MINIMAX M2.7
             </span>
             {!isEmpty && (
               <button
