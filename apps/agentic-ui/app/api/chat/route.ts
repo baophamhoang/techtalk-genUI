@@ -132,7 +132,7 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: 'minimax/minimax-m2.7',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           ...messages,

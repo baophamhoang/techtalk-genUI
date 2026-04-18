@@ -157,7 +157,7 @@ Nếu audience hỏi "Dùng cái nào?", dùng bảng này:
 > "AI SDK v6 có bug — Zod tool schemas bị serialize thành `type: None`, OpenAI trả 400. Bypass bằng fetch trực tiếp là sạch hơn."
 
 **"Minimax / model khác có dùng được không?"**
-> "Tool calling cần model support function calling. GPT-4o-mini, Claude, Gemini đều được. Minimax m2.7 có vấn đề với args parsing qua AI SDK — chúng tôi switch sang GPT-4o-mini."
+> "Tool calling cần model support function calling. MiniMax M2.7 support tốt, Claude, Gemini đều được. Đã dùng direct fetch thay vì AI SDK để tránh serialization issues."
 
 **"Chi phí thế nào?"**
-> "Demo 3/4 dùng ~50-200 token mỗi request (chỉ tham số tool, không phải code). GPT-4o-mini giá khoảng $0.15/1M input token — rất rẻ cho production."
+> "Demo 2/3 dùng ~50-200 token mỗi request (chỉ tham số tool, không phải code). MiniMax M2.7 giá khoảng $0.10/1M input token — rẻ hơn GPT-4o-mini."

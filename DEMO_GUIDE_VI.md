@@ -438,7 +438,7 @@ Mỗi pattern dưới đây có thể tích hợp độc lập vào stack Next.j
 2. Tạo route API
    └── app/api/generate-form/route.ts
        const result = await streamObject({
-         model: openai("gpt-4o-mini"),
+         model: openai("minimax/minimax-m2.7"),
          schema: FormSchema,
          prompt: `Tạo form cho ${industry}, quy trình: ${workflow}`,
        });
@@ -482,7 +482,7 @@ Mỗi pattern dưới đây có thể tích hợp độc lập vào stack Next.j
    └── app/api/compose-ui/route.ts
        // Gọi thẳng fetch() đến OpenAI/OpenRouter — KHÔNG qua AI SDK*
        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-         body: JSON.stringify({ model: "gpt-4o-mini", tools: TOOLS, tool_choice: "required", ... })
+         body: JSON.stringify({ model: "minimax/minimax-m2.7", tools: TOOLS, tool_choice: "required", ... })
        });
        // Parse tool_calls, stream markers về FE
 
