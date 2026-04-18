@@ -111,7 +111,7 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "minimax/minimax-m2.5",
+          model: "minimax/minimax-m2.7",
           stream: true,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
@@ -194,13 +194,13 @@ function App() {
                 <p style={{ margin: "4px 0 0", opacity: 0.8 }}>System event or user context → AI → JSON Schema → Form</p>
               </div>
               <span style={{ padding: "6px 14px", backgroundColor: "#1e3a5f", color: "#93c5fd", borderRadius: "999px", fontSize: "13px", fontWeight: "bold", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
-                🤖 AI-POWERED · MINIMAX M2.5
+                🤖 AI-POWERED · MINIMAX M2.7
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "20px", flexWrap: "wrap", fontSize: "13px", fontWeight: "600" }}>
               {[
                 { icon: "⚡", label: "Trigger" },
-                { icon: "🤖", label: "AI (Minimax M2.5)" },
+                { icon: "🤖", label: "AI (Minimax M2.7)" },
                 { icon: "📋", label: "JSON Schema" },
                 { icon: "✨", label: "UI Render" },
               ].map((step, i, arr) => (

@@ -13,50 +13,34 @@
 
 ---
 
-## Demo 1 — Rule Engine (localhost:3101)
+## Demo 1 — Declarative GenUI (localhost:3101)
 
 ### Intro (nói với audience)
-> "Demo đầu tiên — không có AI, không có API call. Toàn bộ logic chạy trên client. Tôi chọn ngành và quy trình, rule engine chọn đúng schema, renderer vẽ UI. Xem tốc độ."
+> "Demo đầu tiên — AI nhận trigger, sinh JSON Schema, renderer vẽ form. Có hai chế độ: System Events (AI phản ứng với sự kiện hệ thống như IoT) và User Context (chọn ngành + quy trình, AI tạo form phù hợp)."
 
-### Flow demo
+### Tab 1 — System Events
+
+1. Click một event bất kỳ (VD: **"Cảm biến nhiệt độ"**)
+   - *Chỉ vào panel Reasoning:* "AI đang suy nghĩ — thấy luồng reasoning trước khi có output"
+   - *Khi form xuất hiện:* "JSON schema stream về realtime, renderer vẽ ngay"
+
+2. Mở DevTools → Network tab → click event khác
+   - *Chỉ vào:* "Có API call — không phải rule engine. AI thật, schema thật."
+
+### Tab 2 — User Context
 
 1. Chọn **"Y tế"** → **"Đặt lịch khám"** → click Generate
-   - *Chỉ vào:* "Tức thời — không có loading spinner, không có network request"
+   - *Chỉ vào:* "AI sinh form phù hợp — label tiếng Việt, đúng loại field"
 
-2. Chọn **"Tài chính"** → **"Mở tài khoản"** → click Generate
-   - *Chỉ vào:* "Form khác hoàn toàn — cùng renderer, khác schema"
-
-3. Mở DevTools → Network tab → chọn lại một combo bất kỳ
-   - *Chỉ vào:* "Không có request nào — 100% client-side"
+2. Thử **"Logistics"** → **"Theo dõi đơn hàng"**
+   - *Chỉ vào:* "Combo này chưa từng được code sẵn — AI xử lý mọi tổ hợp"
 
 ### Punchline
-> "Đây là nền tảng. Predictable, zero-cost, offline-ready. Vấn đề duy nhất: mỗi form phải viết tay. Khi có 50 ngành × 10 quy trình = 500 schema — không ai làm nổi."
+> "Declarative GenUI: AI nhận trigger, sinh schema, renderer an toàn. Nhưng renderer bị giới hạn — chỉ sinh được form field đơn giản. Muốn rich UI hơn — product card, chart, data table — cần approach khác."
 
 ---
 
-## Demo 2 — AI Sinh JSON Schema (localhost:3000)
-
-### Intro
-> "Demo 2 giải quyết vấn đề scale của Demo 1 — thay vì viết tay 500 schema, để AI sinh ra. Nhưng output vẫn là JSON, vẫn qua cùng renderer an toàn."
-
-### Flow demo
-
-1. Chọn **"Logistics"** → **"Theo dõi đơn hàng"** → click Generate
-   - *Chỉ vào thanh stream đang chạy:* "JSON đang stream về realtime — thấy form xuất hiện dần"
-   - *Sau khi xong:* "AI tự điền tên trường, loại input, label phù hợp với logistics"
-
-2. Click Generate lần nữa với **cùng input**
-   - *Chỉ vào:* "Lần này AI sinh ra hơi khác — non-deterministic. Đây là đánh đổi."
-
-3. Thử combo **"Bất động sản"** → **"Thuê mặt bằng"**
-   - *Chỉ vào:* "Combo này không có trong Demo 1. AI xử lý được mọi tổ hợp."
-
-### Punchline
-> "Linh hoạt hơn, scale tốt hơn. Nhưng vẫn bị giới hạn bởi renderer — AI chỉ sinh được những field mà renderer biết vẽ. Muốn rich UI hơn — product card, chart, data table — thì cần approach khác."
-
----
-
-## Demo 3 — Tool Calling (localhost:3005)
+## Demo 2 — Tool Calling (localhost:3102)
 
 ### Intro
 > "Đây là approach production-viable nhất hôm nay. Thay vì AI viết code, AI *chọn component*. Tôi mô tả UI bằng tiếng Việt bình thường — AI quyết định dùng component nào và điền dữ liệu gì."
@@ -89,14 +73,14 @@ Card sản phẩm tai nghe Sony WH-1000XM5
 - **AI SDK bug:** Nếu ai hỏi về tech stack — "Chúng tôi bypass Vercel AI SDK vì có bug serialization, gọi thẳng OpenRouter bằng fetch"
 
 ### Punchline
-> "Demo 3 giải quyết câu hỏi production quan trọng nhất: làm sao để AI sinh UI đủ nhanh, đủ nhất quán, và đủ an toàn để ship cho user thật. Câu trả lời: đừng để AI viết code — để nó chọn component."
+> "Demo 2 giải quyết câu hỏi production quan trọng nhất: làm sao để AI sinh UI đủ nhanh, đủ nhất quán, và đủ an toàn để ship cho user thật. Câu trả lời: đừng để AI viết code — để nó chọn component."
 
 ---
 
-## Demo 4 — Agentic UI (localhost:3006)
+## Demo 3 — Agentic UI (localhost:3103)
 
 ### Intro
-> "Demo 3 là một lần — một prompt, một output. Demo 4 là hội thoại. AI có bộ nhớ. Tôi xây dashboard, rồi yêu cầu chỉnh sửa bằng ngôn ngữ tự nhiên — AI biết mình đã xây gì và update đúng chỗ."
+> "Demo 2 là một lần — một prompt, một output. Demo 3 là hội thoại. AI có bộ nhớ. Tôi xây dashboard, rồi yêu cầu chỉnh sửa bằng ngôn ngữ tự nhiên — AI biết mình đã xây gì và update đúng chỗ."
 
 ### Flow demo
 
@@ -104,7 +88,7 @@ Card sản phẩm tai nghe Sony WH-1000XM5
 ```
 Dashboard quản lý đơn hàng tuần này
 ```
-- *Khi render xong:* "Stats và table — giống Demo 3. Nhưng giờ xem điều tiếp theo."
+- *Khi render xong:* "Stats và table — giống Demo 2. Nhưng giờ xem điều tiếp theo."
 
 **Turn 2** (click chip hoặc gõ):
 ```
@@ -130,7 +114,7 @@ Làm form đặt hàng nhanh
 - **Trade-off:** "Token cost tăng theo hội thoại — production cần sliding window hoặc compress history"
 
 ### Punchline
-> "Demo 3 và 4 dùng cùng component registry, cùng tool schema. Sự khác biệt chỉ là: Demo 3 generate, Demo 4 collaborate. Tùy use case bạn chọn model nào phù hợp hơn."
+> "Demo 2 và 3 dùng cùng component registry, cùng tool schema. Sự khác biệt chỉ là: Demo 2 generate, Demo 3 collaborate. Tùy use case bạn chọn model nào phù hợp hơn."
 
 ---
 
@@ -140,13 +124,13 @@ Nếu audience hỏi "Dùng cái nào?", dùng bảng này:
 
 | Tình huống | Dùng pattern |
 |---|---|
-| Form onboarding cho nhiều ngành khác nhau | Demo 2 (AI Schema) |
-| Dashboard nội bộ với design system cố định | Demo 3 (Tool Calling) |
-| Chatbot hỗ trợ khách hàng hiện thị UI phù hợp | Demo 3 hoặc 4 |
-| No-code builder cho end user | Demo 4 (Agentic) |
-| Luồng tần suất cao, cần audit (banking, y tế) | Demo 1 (Rule Engine) |
+| Form onboarding cho nhiều ngành khác nhau | Demo 1 (Declarative GenUI) |
+| Dashboard nội bộ với design system cố định | Demo 2 (Tool Calling) |
+| Chatbot hỗ trợ khách hàng hiện thị UI phù hợp | Demo 2 hoặc 3 |
+| No-code builder cho end user | Demo 3 (Agentic) |
+| Luồng tần suất cao, cần audit (banking, y tế) | Demo 1 (Declarative GenUI) |
 | MVP nhanh với form đã biết trước | Demo 1 |
-| "Talk to your data" / BI tool | Demo 4 |
+| "Talk to your data" / BI tool | Demo 3 |
 
 ### Câu hỏi thường gặp từ audience
 
@@ -160,4 +144,4 @@ Nếu audience hỏi "Dùng cái nào?", dùng bảng này:
 > "Tool calling cần model support function calling. MiniMax M2.7 support tốt, Claude, Gemini đều được. Đã dùng direct fetch thay vì AI SDK để tránh serialization issues."
 
 **"Chi phí thế nào?"**
-> "Demo 2/3 dùng ~50-200 token mỗi request (chỉ tham số tool, không phải code). MiniMax M2.7 giá khoảng $0.10/1M input token — rất rẻ cho production."
+> "Demo 1/2/3 đều dùng ~50-200 token mỗi request (chỉ tham số tool hoặc JSON schema, không phải code). MiniMax M2.7 giá khoảng $0.10/1M input token — rất rẻ cho production."
