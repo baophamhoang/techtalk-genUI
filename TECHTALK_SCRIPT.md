@@ -42,7 +42,7 @@ Khán giả thường nghĩ GenUI chỉ dành cho Chatbot. Hãy phá vỡ địn
 
 **Cách dẫn dắt:**
 - Gõ: *"Dashboard quản lý đơn hàng tuần này"* → chỉ vào panel trái: JSON tool call, không phải JSX
-- Chỉ vào component xuất hiện: "3 giây. React component thật — không iframe, không sandbox"
+- Chỉ vào component xuất hiện: "3 giây. React component thật"
 - Gõ: *"Thêm cảnh báo hàng sắp hết"* → chỉ vào AlertBanner xuất hiện thêm
 
 **Câu Chốt Demo 3:**

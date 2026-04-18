@@ -121,7 +121,7 @@ Server gửi tool call đã hoàn thành dưới dạng marker __TOOL__{json}__E
         ↓
 FE parse marker → map tên tool → render component React tương ứng trực tiếp
         ↓
-Component xuất hiện ngay — không iframe, không sandbox, không compile code
+Component xuất hiện ngay — không compile code
 ```
 
 AI không bao giờ viết code. Nó chỉ quyết định *component nào* cần dùng và *dữ liệu gì* để điền vào. Bản thân các component luôn là cùng một code React, do developer bảo trì.
@@ -239,7 +239,7 @@ AI:         [StatsGrid cập nhật — doanh thu theo tuần]
 | **Khả năng dự đoán** | 100% | Thấp | Trung bình (tên tool cố định) | Thấp (đa lượt) |
 | **Chi phí API** | $0 | Thấp (JSON nhỏ) | Thấp (~50 token) | Trung bình (tăng theo lịch sử) |
 | **Nhất quán design** | ✅ Cao | ✅ Cao | ✅ Cao | ✅ Cao |
-| **Bảo mật** | Cao nhất | Cao | Cao (không sandbox) | Cao (không sandbox) |
+| **Bảo mật** | Cao nhất | Cao | Cao | Cao |
 | **sandbox / iframe** | ❌ Không | ❌ Không | ❌ Không | ❌ Không |
 | **Đa lượt** | ❌ | ❌ | ❌ | ✅ |
 | **Khi AI thất bại** | N/A | Form trống | Không render component | Thông báo lỗi trong chat |

@@ -6,7 +6,7 @@
 
 ## Trước Khi Bắt Đầu
 
-- Mở sẵn 4 tab browser: `localhost:3101`, `localhost:3000`, `localhost:3005`, `localhost:3006`
+- Mở sẵn 3 tab browser: `localhost:3101`, `localhost:3102`, `localhost:3103`
 - Tăng font size browser lên 125% để audience nhìn rõ
 - Xoá hết cookie/localStorage nếu chạy lại demo
 - Kiểm tra network (AI demos cần internet)
@@ -68,7 +68,7 @@
 Dashboard quản lý đơn hàng tuần này
 ```
 - *Trong lúc chờ:* "AI đang gọi tools — nó không viết JSX, không viết HTML. Nó chỉ chọn `showStatsGrid` và `showDataTable` và điền tham số."
-- *Khi component xuất hiện:* "3 giây. Component render trực tiếp trong React — không iframe, không Babel, không sandbox."
+- *Khi component xuất hiện:* "3 giây. Component render trực tiếp trong React."
 - *Chỉ vào panel trái:* "Đây là tool call AI trả về — JSON thuần, không phải code"
 
 **Prompt 2:**
@@ -160,4 +160,4 @@ Nếu audience hỏi "Dùng cái nào?", dùng bảng này:
 > "Tool calling cần model support function calling. MiniMax M2.7 support tốt, Claude, Gemini đều được. Đã dùng direct fetch thay vì AI SDK để tránh serialization issues."
 
 **"Chi phí thế nào?"**
-> "Demo 2/3 dùng ~50-200 token mỗi request (chỉ tham số tool, không phải code). MiniMax M2.7 giá khoảng $0.10/1M input token — rẻ hơn GPT-4o-mini."
+> "Demo 2/3 dùng ~50-200 token mỗi request (chỉ tham số tool, không phải code). MiniMax M2.7 giá khoảng $0.10/1M input token — rất rẻ cho production."

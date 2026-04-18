@@ -135,8 +135,8 @@ export default function Home() {
               <Layers size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight">Demo 3 — Tool Calling</h1>
-              <p className="text-xs text-slate-500">AI chọn component → render ngay — không sinh code, không iframe</p>
+              <h1 className="text-lg font-black tracking-tight">Demo 2 — Tool Calling</h1>
+              <p className="text-xs text-slate-500">AI chọn component → render ngay — không sinh code</p>
             </div>
           </div>
           <span className="text-xs font-bold px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full border border-violet-200 flex items-center gap-1.5">
@@ -264,7 +264,7 @@ export default function Home() {
           <h2 className="text-sm font-bold text-slate-600 flex items-center gap-2">
             <Zap size={14} className={isDone && toolCalls.length > 0 ? "text-green-500" : "text-slate-300"} />
             {isDone && toolCalls.length > 0
-              ? "🚀 UI được render từ design system — không sandbox, không iframe"
+              ? "🚀 UI được render từ design system"
               : "🚀 Components sẽ xuất hiện ở đây"}
           </h2>
 
@@ -318,11 +318,10 @@ export default function Home() {
       <div className="border-t border-slate-200 bg-white">
         <div className="max-w-[1400px] mx-auto px-6 py-5">
           <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-sm text-violet-800">
-            <strong>Tại sao tốt hơn Demo 2?</strong>{" "}
-            Demo 2 để AI sinh JSON schema — renderer vẫn là bottleneck, chỉ tạo được form field đơn giản.
-            Demo 3 đảo ngược: developer định nghĩa component library, AI chỉ <em>chọn component</em> và <em>điền tham số</em> (~50 tokens).
-            Kết quả: rich UI (card, table, stats, alert), design system nhất quán 100%, render trực tiếp trong React —{" "}
-            <strong>không sandbox, không iframe, không Babel</strong>.
+            <strong>Tại sao tốt hơn?</strong>{" "}
+            Demo 1 để AI sinh JSON schema — renderer vẫn là bottleneck, chỉ tạo được form field đơn giản.
+            Demo 2 (demo này) đảo ngược: developer định nghĩa component library, AI chỉ <em>chọn component</em> và <em>điền tham số</em> (~50 tokens).
+            Kết quả: rich UI (card, table, stats, alert), design system nhất quán 100%, render trực tiếp trong React.
           </div>
         </div>
       </div>

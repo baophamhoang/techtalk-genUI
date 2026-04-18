@@ -118,7 +118,7 @@ export default function Home() {
               <Bot size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight">Demo 4 — Agentic UI</h1>
+              <h1 className="text-lg font-black tracking-tight">Demo 3 — Agentic UI</h1>
               <p className="text-xs text-slate-500">Hội thoại với AI để xây và tinh chỉnh UI theo thời gian thực</p>
             </div>
           </div>
@@ -306,9 +306,9 @@ export default function Home() {
       <div className="border-t border-slate-200 bg-white flex-shrink-0">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800">
-            <strong>Tại sao tốt hơn Demo 3 (single-shot)?</strong>{" "}
-            Demo 3 stateless — mỗi prompt là một request độc lập, AI không biết đã xây gì.
-            Demo 4 gửi <em>toàn bộ lịch sử hội thoại</em> mỗi lượt — AI có <em>bộ nhớ</em>, biết mình đã xây gì và có thể tinh chỉnh dựa trên yêu cầu tiếp theo.
+            <strong>Tại sao tốt hơn Demo 2 (single-shot)?</strong>{" "}
+            Demo 2 stateless — mỗi prompt là một request độc lập, AI không biết đã xây gì.
+            Demo 3 gửi <em>toàn bộ lịch sử hội thoại</em> mỗi lượt — AI có <em>bộ nhớ</em>, biết mình đã xây gì và có thể tinh chỉnh dựa trên yêu cầu tiếp theo.
             Cùng component registry, cùng tốc độ ~3–5s, nhưng bạn có thể nói{" "}
             <em>"bỏ cái cảnh báo đi"</em> hoặc <em>"thêm cột giá vào bảng"</em> và AI hiểu ngữ cảnh.
           </div>

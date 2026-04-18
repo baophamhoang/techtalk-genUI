@@ -26,8 +26,6 @@ class ErrorBoundary extends React.Component<any, any> {
             {this.state.error && this.state.error.toString()}
             <br />
             {this.state.errorInfo?.componentStack}
-            <br />
-            {this.state.error?.stack}
           </details>
         </div>
       );
@@ -36,90 +34,71 @@ class ErrorBoundary extends React.Component<any, any> {
   }
 }
 
-// ─── Event definitions ────────────────────────────────────────────────────────
+// ─── Data ─────────────────────────────────────────────────────────────────────
 const EVENTS = [
-  {
-    icon: "💻",
-    label: "Event 1: Product Configurator (Web Routing)",
-    description: "User clicked 'Build PC Configuration' on an e-commerce website. Generate a PC hardware customization form with GPU, RAM, warranty, and color options.",
-  },
-  {
-    icon: "🚗",
-    label: "Event 2: Interactive Triage (IoT Sensor Trigger)",
-    description: "IoT sensor detected engine error code P0300 (Engine Misfire) and abnormal temperature increase in vehicle. Generate a vehicle diagnostic triage form.",
-  },
-  {
-    icon: "🧾",
-    label: "Event 3: Extract & Correction (Image OCR Input)",
-    description: "OCR system finished extracting data from a restaurant bill image and needs user confirmation. Generate a bill-splitting confirmation form.",
-  },
+  { icon: "💻", label: "Event 1: Product Configurator (Web Routing)", description: "User clicked 'Build PC Configuration' on an e-commerce website. Generate a PC hardware customization form with GPU, RAM, warranty, and color options." },
+  { icon: "🚗", label: "Event 2: Interactive Triage (IoT Sensor Trigger)", description: "IoT sensor detected engine error code P0300 (Engine Misfire) and abnormal temperature increase in vehicle. Generate a vehicle diagnostic triage form." },
+  { icon: "🧾", label: "Event 3: Extract & Correction (Image OCR Input)", description: "OCR system finished extracting data from a restaurant bill image and needs user confirmation. Generate a bill-splitting confirmation form." },
+];
+
+const INDUSTRIES = [
+  { value: "healthcare", label: "🏥 Healthcare" },
+  { value: "fintech", label: "💳 Fintech" },
+  { value: "logistics", label: "🚚 Logistics" },
+  { value: "ecommerce", label: "🛒 E-commerce" },
+  { value: "education", label: "🎓 Education" },
+  { value: "real-estate", label: "🏠 Real Estate" },
+];
+
+const WORKFLOWS = [
+  { value: "onboarding", label: "Onboarding khách hàng mới" },
+  { value: "approval", label: "Phê duyệt / Approval" },
+  { value: "intake", label: "Thu thập thông tin ban đầu" },
+  { value: "inspection", label: "Kiểm tra / Inspection" },
+  { value: "booking", label: "Đặt lịch / Booking" },
+  { value: "complaint", label: "Tiếp nhận khiếu nại" },
 ];
 
 const SYSTEM_PROMPT = `You are a UI architect. Always respond with ONLY valid JSON, no markdown, no explanation.`;
 
-function buildUserPrompt(eventDescription: string): string {
-  return `A system event has been detected: "${eventDescription}"
-
-Generate a JSON schema for the UI form that should appear in response to this event.
-
-Return ONLY this exact JSON structure, no other text:
-{
+const JSON_SCHEMA_TEMPLATE = `{
   "fields": [
-    {
-      "key": "camelCaseKey",
-      "field": {
-        "type": "string",
-        "title": "Vietnamese label",
-        "placeholder": "optional hint"
-      }
-    },
-    {
-      "key": "dropdownField",
-      "field": {
-        "type": "string",
-        "title": "Vietnamese label",
-        "enum": ["val1", "val2"],
-        "enumNames": ["Tên 1", "Tên 2"]
-      }
-    },
-    {
-      "key": "checkboxField",
-      "field": {
-        "type": "boolean",
-        "title": "Vietnamese checkbox label"
-      }
-    }
+    { "key": "camelCaseKey", "field": { "type": "string", "title": "Vietnamese label", "placeholder": "optional" } },
+    { "key": "dropdownField", "field": { "type": "string", "title": "Vietnamese label", "enum": ["val1","val2"], "enumNames": ["Tên 1","Tên 2"] } },
+    { "key": "checkField", "field": { "type": "boolean", "title": "Vietnamese checkbox label" } }
   ],
-  "required": ["key1", "key2"],
-  "actionButtons": [
-    {
-      "label": "Vietnamese button text",
-      "variant": "primary",
-      "action": "snake_case_action"
-    }
-  ]
+  "required": ["key1"],
+  "actionButtons": [{ "label": "Vietnamese button", "variant": "primary", "action": "snake_case_action" }]
+}`;
+
+function buildEventPrompt(description: string): string {
+  return `A system event has been detected: "${description}"
+Generate a JSON schema for the UI form that should appear in response to this event.
+Return ONLY this JSON structure: ${JSON_SCHEMA_TEMPLATE}
+Rules: Vietnamese for ALL labels, 3-5 fields, at least one enum, 1-2 action buttons. Return ONLY the JSON.`;
 }
 
-Rules:
-- Use Vietnamese for ALL titles, labels, button text, placeholders
-- Generate 3-5 fields appropriate for this event context
-- At least one field must use enum (dropdown)
-- 1-2 action buttons matching the event intent
-- Return ONLY the JSON, nothing else`;
+function buildContextPrompt(industry: string, workflow: string): string {
+  return `Generate a form schema for a ${industry} business, workflow: "${workflow}".
+Return ONLY this JSON structure: ${JSON_SCHEMA_TEMPLATE}
+Rules: Vietnamese for ALL labels, 4-6 fields appropriate for ${industry} + ${workflow}, at least one enum, 1-2 action buttons. Return ONLY the JSON.`;
 }
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 function App() {
+  const [activeTab, setActiveTab] = useState<"events" | "context">("events");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentPrompt, setCurrentPrompt] = useState("Hãy chọn một Sự kiện hệ thống (Event) bên dưới để xem luồng SDUI!");
+  const [currentPrompt, setCurrentPrompt] = useState("Hãy chọn một trigger bên dưới để xem Declarative GenUI!");
   const [currentSchema, setCurrentSchema] = useState<any>({});
   const [rawJson, setRawJson] = useState<string>("");
   const [reasoning, setReasoning] = useState<string>("");
+  const [industry, setIndustry] = useState<string | null>(null);
+  const [workflow, setWorkflow] = useState<string | null>(null);
 
-  const handleGenerateWithAI = async (eventDescription: string, eventLabel: string) => {
+  const streamFromAI = async (prompt: string, label: string) => {
     if (isGenerating) return;
     setIsGenerating(true);
-    setCurrentPrompt(eventLabel);
+    setCurrentPrompt(label);
     setCurrentSchema({});
     setRawJson("");
     setReasoning("");
@@ -132,18 +111,16 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "minimax/minimax-m2.7",
+          model: "minimax/minimax-m2.5",
           stream: true,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: buildUserPrompt(eventDescription) },
+            { role: "user", content: prompt },
           ],
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
@@ -153,12 +130,9 @@ function App() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        // Buffer incomplete lines — chunks can split mid-line
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // keep last incomplete line
-
+        buffer = lines.pop() || "";
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
@@ -166,41 +140,28 @@ function App() {
           try {
             const data = JSON.parse(raw);
             const delta = data.choices?.[0]?.delta ?? {};
-            // Show reasoning tokens as visual feedback while AI thinks
-            if (delta.reasoning) {
-              setReasoning(prev => prev + delta.reasoning);
-            }
-            // Accumulate actual JSON content
-            if (delta.content) {
-              accumulated += delta.content;
-              setRawJson(accumulated);
-            }
+            if (delta.reasoning) setReasoning(prev => prev + delta.reasoning);
+            if (delta.content) { accumulated += delta.content; setRawJson(accumulated); }
           } catch { /* skip malformed lines */ }
         }
       }
 
-      // Final parse after stream completes — extract outermost { } to handle extra text
       const start = accumulated.indexOf("{");
       const end = accumulated.lastIndexOf("}");
-      if (start === -1 || end === -1 || end <= start) throw new Error("No valid JSON found in response");
+      if (start === -1 || end <= start) throw new Error("No valid JSON in response");
       const parsed = JSON.parse(accumulated.slice(start, end + 1));
 
       const properties: Record<string, any> = {};
       for (const { key, field } of (parsed.fields || [])) {
         if (key && field) properties[key] = field;
       }
-
       if (Object.keys(properties).length > 0) {
         setCurrentSchema({
           root: "generatedForm",
           elements: {
             generatedForm: {
               type: "object",
-              props: {
-                properties,
-                required: parsed.required || [],
-                actionButtons: parsed.actionButtons || [],
-              },
+              props: { properties, required: parsed.required || [], actionButtons: parsed.actionButtons || [] },
             },
           },
         });
@@ -213,6 +174,15 @@ function App() {
     }
   };
 
+  const handleEventTrigger = (event: typeof EVENTS[0]) =>
+    streamFromAI(buildEventPrompt(event.description), event.label);
+
+  const handleContextGenerate = () => {
+    if (!industry || !workflow) return;
+    const label = `${INDUSTRIES.find(i => i.value === industry)?.label} — ${WORKFLOWS.find(w => w.value === workflow)?.label}`;
+    streamFromAI(buildContextPrompt(industry, workflow), label);
+  };
+
   return (
     <ErrorBoundary>
       <JSONUIProvider registry={genUIRegistry.registry}>
@@ -220,26 +190,23 @@ function App() {
           <header>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
               <div>
-                <h1 style={{ margin: 0 }}>Demo 1 — Server-Driven UI (SDUI)</h1>
-                <p style={{ margin: "4px 0 0", opacity: 0.8 }}>UI tự sinh từ System Events — AI nhận event và stream schema tương ứng</p>
+                <h1 style={{ margin: 0 }}>Demo 1 — Declarative GenUI</h1>
+                <p style={{ margin: "4px 0 0", opacity: 0.8 }}>System event or user context → AI → JSON Schema → Form</p>
               </div>
               <span style={{ padding: "6px 14px", backgroundColor: "#1e3a5f", color: "#93c5fd", borderRadius: "999px", fontSize: "13px", fontWeight: "bold", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
                 🤖 AI-POWERED · MINIMAX M2.5
               </span>
             </div>
-
-            {/* Flow diagram */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "20px", flexWrap: "wrap", fontSize: "13px", fontWeight: "600" }}>
               {[
-                { icon: "📡", label: "System Event" },
+                { icon: "⚡", label: "Trigger" },
                 { icon: "🤖", label: "AI (Minimax M2.5)" },
                 { icon: "📋", label: "JSON Schema" },
                 { icon: "✨", label: "UI Render" },
               ].map((step, i, arr) => (
                 <React.Fragment key={step.label}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px", backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.25)" }}>
-                    <span>{step.icon}</span>
-                    <span>{step.label}</span>
+                    <span>{step.icon}</span><span>{step.label}</span>
                   </div>
                   {i < arr.length - 1 && <span style={{ opacity: 0.5, fontSize: "18px" }}>→</span>}
                 </React.Fragment>
@@ -248,43 +215,117 @@ function App() {
           </header>
 
           <div className="demo-container">
-            {/* Left: Event Triggers */}
+            {/* Left: Controls */}
             <div className="controls">
-              <h3>📡 System Event Triggers</h3>
-              <div style={{ padding: "12px 16px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", marginBottom: "16px", fontSize: "14px" }}>
-                <strong>Event nhận được: </strong> <i>"{currentPrompt}"</i>
-                {isGenerating && <span style={{ marginLeft: "8px", color: "#16a34a", fontWeight: "bold" }}> → AI đang stream schema...</span>}
-              </div>
-
-              <div className="button-group" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {EVENTS.map((event) => (
+              {/* Tab switcher */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                {[
+                  { key: "events", label: "📡 System Events" },
+                  { key: "context", label: "🧑‍💼 User Context" },
+                ].map(tab => (
                   <button
-                    key={event.label}
-                    onClick={() => handleGenerateWithAI(event.description, event.label)}
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key as any)}
                     disabled={isGenerating}
-                    style={{ textAlign: "left", padding: "12px" }}
+                    style={{
+                      flex: 1, padding: "8px 12px", fontSize: "13px", fontWeight: "bold",
+                      borderRadius: "8px", border: "2px solid",
+                      borderColor: activeTab === tab.key ? "#3b82f6" : "#e2e8f0",
+                      backgroundColor: activeTab === tab.key ? "#eff6ff" : "#fff",
+                      color: activeTab === tab.key ? "#1d4ed8" : "#64748b",
+                      cursor: "pointer",
+                    }}
                   >
-                    {event.icon} {event.label}
+                    {tab.label}
                   </button>
                 ))}
               </div>
+
+              {/* Current trigger label */}
+              <div style={{ padding: "10px 14px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", marginBottom: "16px", fontSize: "13px" }}>
+                <strong>Trigger: </strong><i>"{currentPrompt}"</i>
+                {isGenerating && <span style={{ marginLeft: "8px", color: "#16a34a", fontWeight: "bold" }}> → AI đang stream...</span>}
+              </div>
+
+              {/* Tab 1: System Events */}
+              {activeTab === "events" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {EVENTS.map(event => (
+                    <button key={event.label} onClick={() => handleEventTrigger(event)} disabled={isGenerating} style={{ textAlign: "left", padding: "12px" }}>
+                      {event.icon} {event.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Tab 2: User Context */}
+              {activeTab === "context" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <h4 style={{ margin: "0 0 8px", fontSize: "13px", color: "#374151" }}>1. Chọn Industry</h4>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                      {INDUSTRIES.map(ind => (
+                        <button
+                          key={ind.value}
+                          onClick={() => setIndustry(ind.value)}
+                          disabled={isGenerating}
+                          style={{
+                            padding: "8px", fontSize: "12px", borderRadius: "8px", border: "2px solid",
+                            borderColor: industry === ind.value ? "#3b82f6" : "#e2e8f0",
+                            backgroundColor: industry === ind.value ? "#eff6ff" : "#fff",
+                            color: industry === ind.value ? "#1d4ed8" : "#374151",
+                            cursor: "pointer", fontWeight: industry === ind.value ? "bold" : "normal",
+                          }}
+                        >
+                          {ind.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 style={{ margin: "0 0 8px", fontSize: "13px", color: "#374151" }}>2. Chọn Workflow</h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {WORKFLOWS.map(wf => (
+                        <button
+                          key={wf.value}
+                          onClick={() => setWorkflow(wf.value)}
+                          disabled={isGenerating}
+                          style={{
+                            padding: "8px 12px", fontSize: "12px", textAlign: "left", borderRadius: "8px", border: "2px solid",
+                            borderColor: workflow === wf.value ? "#3b82f6" : "#e2e8f0",
+                            backgroundColor: workflow === wf.value ? "#eff6ff" : "#fff",
+                            color: workflow === wf.value ? "#1d4ed8" : "#374151",
+                            cursor: "pointer", fontWeight: workflow === wf.value ? "bold" : "normal",
+                          }}
+                        >
+                          {wf.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleContextGenerate}
+                    disabled={!industry || !workflow || isGenerating}
+                    style={{ padding: "12px", fontWeight: "bold", borderRadius: "8px", backgroundColor: (!industry || !workflow || isGenerating) ? "#e2e8f0" : "#3b82f6", color: (!industry || !workflow || isGenerating) ? "#94a3b8" : "#fff", border: "none", cursor: (!industry || !workflow || isGenerating) ? "not-allowed" : "pointer" }}
+                  >
+                    {isGenerating ? "⏳ AI đang tạo schema..." : "✨ Tạo Form với AI"}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Center: Rendered Form */}
             <div className="form-section">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3>✨ UI Render (từ JSON Schema)</h3>
-                {isGenerating && (
-                  <div className="spinner" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "3px solid #ccc", borderTopColor: "#3b82f6", animation: "spin 1s linear infinite" }} />
-                )}
+                {isGenerating && <div className="spinner" style={{ width: "20px", height: "20px", borderRadius: "50%", border: "3px solid #ccc", borderTopColor: "#3b82f6", animation: "spin 1s linear infinite" }} />}
               </div>
-
               <div className="form-wrapper" style={{ minHeight: "300px" }}>
                 {currentSchema.root ? (
                   <Renderer spec={currentSchema as any} registry={genUIRegistry.registry} />
                 ) : (
                   <p style={{ color: "#6b7280", fontStyle: "italic", textAlign: "center", marginTop: "100px" }}>
-                    {isGenerating ? "AI đang tạo schema..." : "UI sẽ xuất hiện tại đây khi AI stream xong..."}
+                    {isGenerating ? "AI đang tạo schema..." : "UI sẽ xuất hiện tại đây sau khi AI stream xong..."}
                   </p>
                 )}
               </div>
@@ -296,16 +337,14 @@ function App() {
                 <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: isGenerating ? "#4ade80" : rawJson ? "#4ade80" : "#475569", display: "inline-block", animation: isGenerating ? "pulse 1s infinite" : "none" }} />
                 📋 JSON Stream (live)
               </h3>
-              {/* Reasoning panel */}
               {(reasoning || (isGenerating && !rawJson)) && (
                 <div style={{ borderLeft: "2px solid #334155", paddingLeft: "10px" }}>
-                  <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "bold", letterSpacing: "0.05em" }}>🧠 AI REASONING...</div>
+                  <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "bold" }}>🧠 AI REASONING...</div>
                   <pre style={{ fontSize: "11px", color: "#475569", fontFamily: "monospace", overflow: "auto", maxHeight: "150px", whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0 }}>
                     {reasoning || "..."}
                   </pre>
                 </div>
               )}
-              {/* JSON content */}
               <pre style={{ fontSize: "12px", color: "#4ade80", fontFamily: "monospace", overflow: "auto", maxHeight: "280px", whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0 }}>
                 {rawJson || <span style={{ color: "#1e293b", fontStyle: "italic" }}>Chờ AI stream JSON schema...</span>}
               </pre>
@@ -313,12 +352,12 @@ function App() {
           </div>
 
           <footer>
-            <h4>Tại sao SDUI là nền tảng của GenUI?</h4>
+            <h4>Tại sao Declarative GenUI là nền tảng?</h4>
             <ul>
-              <li><strong>Không cần tạo file `.tsx` mới:</strong> Component lắp ráp on-the-fly từ JSON — engineer định nghĩa Registry một lần duy nhất.</li>
-              <li><strong>Safe by design:</strong> Chỉ render các component đã đăng ký trong Registry, tránh HTML injection hoàn toàn.</li>
-              <li><strong>Tách biệt data và presentation:</strong> Server quyết định <em>cái gì</em> hiển thị, client chỉ lo <em>hiển thị như thế nào</em>.</li>
-              <li style={{ color: "#2563eb", fontWeight: "bold" }}>→ Demo 2 sẽ thay System Event bằng user context (industry + workflow) để AI tự tạo ra JSON Schema này.</li>
+              <li><strong>AI sinh JSON, không sinh code:</strong> Output có cấu trúc, an toàn, dễ validate — không bao giờ inject HTML tuỳ ý.</li>
+              <li><strong>Trigger linh hoạt:</strong> Cùng một pattern hoạt động cho system event (IoT, OCR) lẫn user intent (industry + workflow).</li>
+              <li><strong>Renderer là bottleneck:</strong> AI chỉ tạo được field mà renderer biết vẽ — giới hạn này dẫn đến Demo 2.</li>
+              <li style={{ color: "#2563eb", fontWeight: "bold" }}>→ Demo 2 phá vỡ giới hạn này: AI không sinh schema — nó chọn component phong phú hơn từ registry.</li>
             </ul>
           </footer>
 

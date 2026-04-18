@@ -185,9 +185,8 @@ export default function Home() {
                 <p className="text-xs text-slate-500">Context selectors → AI tạo JSON Schema → Cùng renderer với Demo 1</p>
               </div>
             </div>
-            <span className="text-xs font-bold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full border border-blue-200 flex items-center gap-1.5">
-              <Sparkles size={12} />
-              AI-POWERED · MINIMAX
+            <span className="text-xs font-bold px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full border border-amber-200 flex items-center gap-1.5">
+              ⚠️ DEPRECATED — merged into Demo 1 (json-render-demo)
             </span>
           </div>
 
