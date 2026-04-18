@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const { industry, workflow } = await req.json();
 
   const result = streamText({
-    model: openrouter('minimax/minimax-m2.5'),
+    model: openrouter('minimax/minimax-m2.7'),
     system: `You are a UI architect. Always respond with ONLY valid JSON, no markdown, no explanation.`,
     prompt: `Generate a form schema for a ${industry} business application, workflow: "${workflow}".
 

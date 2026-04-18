@@ -107,7 +107,7 @@ export async function POST(req: Request) {
   (async () => {
     try {
       const result = streamText({
-        model: openrouter('minimax/minimax-m2.5'),
+        model: openrouter('minimax/minimax-m2.7'),
         system: SYSTEM_PROMPT,
         prompt: `Generate a React component for: ${description}`,
         temperature: 0.7,

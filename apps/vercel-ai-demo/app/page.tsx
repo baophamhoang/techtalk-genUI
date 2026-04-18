@@ -316,7 +316,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-5 pb-10">
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-sm text-blue-800">
             <strong>So sánh với Demo 1:</strong> Demo 1 dùng Rule Engine để <em>chọn</em> schema có sẵn. Demo 2 để AI <em>sáng tạo</em> schema chưa từng được viết — cùng một renderer, nhưng không còn giới hạn bởi số lượng schema đã định nghĩa.
-            <span className="ml-2 font-bold">→ Demo 3 sẽ phá vỡ giới hạn cuối cùng: AI viết luôn code React.</span>
+            <span className="ml-2 font-bold">→ Demo 3 sẽ phá vỡ giới hạn cuối cùng: thay vì sinh schema, AI gọi tool để chọn component phong phú hơn từ design system.</span>
           </div>
         </div>
       </div>

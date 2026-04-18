@@ -108,29 +108,29 @@ export default function Home() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white flex flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col">
 
       {/* Header */}
-      <header className="border-b border-slate-800 bg-[#111] flex-shrink-0">
+      <header className="border-b border-slate-200 bg-white flex-shrink-0 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-600 p-2 rounded-xl">
+            <div className="bg-emerald-600 p-2 rounded-xl text-white">
               <Bot size={22} />
             </div>
             <div>
               <h1 className="text-lg font-black tracking-tight">Demo 4 — Agentic UI</h1>
-              <p className="text-xs text-slate-400">Hội thoại với AI để xây và tinh chỉnh UI theo thời gian thực</p>
+              <p className="text-xs text-slate-500">Hội thoại với AI để xây và tinh chỉnh UI theo thời gian thực</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold px-3 py-1.5 bg-emerald-900/50 text-emerald-300 rounded-full border border-emerald-700 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               AGENTIC · GPT-4O-MINI
             </span>
             {!isEmpty && (
               <button
                 onClick={handleReset}
-                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-700 transition-colors"
                 title="Reset conversation"
               >
                 <RotateCcw size={16} />
@@ -140,7 +140,7 @@ export default function Home() {
         </div>
 
         {/* Flow */}
-        <div className="max-w-4xl mx-auto px-6 pb-3 flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+        <div className="max-w-4xl mx-auto px-6 pb-3 flex items-center gap-2 text-xs font-semibold text-slate-400 flex-wrap">
           {[
             { icon: "💬", label: "Mô tả UI bằng chat" },
             { icon: "🤖", label: "AI gọi tools" },
@@ -148,10 +148,10 @@ export default function Home() {
             { icon: "🔄", label: "Tinh chỉnh qua hội thoại" },
           ].map((step, i, arr) => (
             <span key={step.label} className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-950/50 rounded-md border border-emerald-900 text-emerald-300">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-md border border-emerald-200 text-emerald-700">
                 {step.icon} {step.label}
               </span>
-              {i < arr.length - 1 && <ChevronRight size={14} className="text-slate-700" />}
+              {i < arr.length - 1 && <ChevronRight size={14} className="text-slate-300" />}
             </span>
           ))}
         </div>
@@ -164,15 +164,15 @@ export default function Home() {
           {/* Empty state */}
           {isEmpty && (
             <div className="flex flex-col items-center justify-center py-16 gap-6">
-              <div className="bg-emerald-900/30 border border-emerald-800/40 p-6 rounded-2xl text-center max-w-sm">
+              <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center max-w-sm">
                 <div className="text-4xl mb-3">🤖</div>
-                <h2 className="font-bold text-slate-200 mb-2">Bắt đầu hội thoại</h2>
-                <p className="text-sm text-slate-400 leading-relaxed">
+                <h2 className="font-bold text-slate-700 mb-2">Bắt đầu hội thoại</h2>
+                <p className="text-sm text-slate-500 leading-relaxed">
                   Mô tả UI bạn muốn. Tôi sẽ xây ngay, và bạn có thể yêu cầu chỉnh sửa bất cứ lúc nào.
                 </p>
               </div>
               <div className="w-full max-w-lg">
-                <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
+                <p className="text-xs text-slate-400 flex items-center gap-1 mb-2">
                   <Lightbulb size={12} /> Thử nhanh:
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -180,7 +180,7 @@ export default function Home() {
                     <button
                       key={p}
                       onClick={() => sendMessage(p)}
-                      className="text-xs text-left px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-xl border border-slate-700 transition-colors leading-snug"
+                      className="text-xs text-left px-3 py-2.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 rounded-xl border border-slate-200 transition-colors leading-snug shadow-sm"
                     >
                       {p}
                     </button>
@@ -196,8 +196,8 @@ export default function Home() {
               {/* Avatar */}
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                 msg.role === "user"
-                  ? "bg-slate-600 text-white"
-                  : "bg-emerald-700 text-white"
+                  ? "bg-slate-200 text-slate-600"
+                  : "bg-emerald-600 text-white"
               }`}>
                 {msg.role === "user" ? <User size={15} /> : <Bot size={15} />}
               </div>
@@ -208,8 +208,8 @@ export default function Home() {
                 {msg.content && (
                   <div className={`max-w-lg px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-emerald-700 text-white rounded-tr-sm"
-                      : "bg-slate-800 text-slate-200 rounded-tl-sm"
+                      ? "bg-emerald-600 text-white rounded-tr-sm"
+                      : "bg-white text-slate-700 rounded-tl-sm border border-slate-200 shadow-sm"
                   }`}>
                     {msg.content}
                   </div>
@@ -223,7 +223,7 @@ export default function Home() {
                       {msg.toolCalls.map((tc, j) => (
                         <span
                           key={j}
-                          className="text-[10px] font-bold px-2 py-0.5 bg-emerald-900/50 text-emerald-400 border border-emerald-800/60 rounded-full font-mono"
+                          className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-mono"
                         >
                           {toolLabels[tc.tool] ?? tc.tool}
                         </span>
@@ -244,11 +244,11 @@ export default function Home() {
           {/* Loading indicator */}
           {isLoading && (
             <div className="flex gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white">
                 <Bot size={15} />
               </div>
-              <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2 text-slate-400 text-sm">
-                <Loader2 size={14} className="animate-spin text-emerald-400" />
+              <div className="bg-white border border-slate-200 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2 text-slate-500 text-sm">
+                <Loader2 size={14} className="animate-spin text-emerald-600" />
                 AI đang xây UI...
               </div>
             </div>
@@ -259,7 +259,7 @@ export default function Home() {
       </main>
 
       {/* Input */}
-      <div className="border-t border-slate-800 bg-[#111] flex-shrink-0">
+      <div className="border-t border-slate-200 bg-white flex-shrink-0">
         <div className="max-w-4xl mx-auto px-6 py-4">
           {/* Suggestion chips after first AI response */}
           {messages.some(m => m.role === "assistant" && m.toolCalls?.length) && !isLoading && (
@@ -268,7 +268,7 @@ export default function Home() {
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-full border border-slate-700 transition-colors"
+                  className="text-xs px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 rounded-full border border-slate-200 transition-colors shadow-sm"
                 >
                   {s}
                 </button>
@@ -284,14 +284,14 @@ export default function Home() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
               placeholder={isEmpty ? "Mô tả UI bạn muốn..." : "Yêu cầu chỉnh sửa hoặc thêm component..."}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               disabled={isLoading}
               autoFocus
             />
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || isLoading}
-              className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+              className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
             >
               {isLoading
                 ? <Loader2 size={16} className="animate-spin" />
@@ -303,12 +303,13 @@ export default function Home() {
       </div>
 
       {/* Footer explanation */}
-      <div className="border-t border-slate-800 bg-[#111] flex-shrink-0">
+      <div className="border-t border-slate-200 bg-white flex-shrink-0">
         <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-4 text-sm text-emerald-200">
-            <strong>Tại sao tốt hơn Demo 3?</strong>{" "}
-            AI có <em>bộ nhớ hội thoại</em> — nó biết mình đã xây gì và có thể tinh chỉnh dựa trên yêu cầu tiếp theo.
-            Cùng registry component, cùng tốc độ ~3–5s, nhưng bạn có thể nói{" "}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800">
+            <strong>Tại sao tốt hơn Demo 3 (single-shot)?</strong>{" "}
+            Demo 3 stateless — mỗi prompt là một request độc lập, AI không biết đã xây gì.
+            Demo 4 gửi <em>toàn bộ lịch sử hội thoại</em> mỗi lượt — AI có <em>bộ nhớ</em>, biết mình đã xây gì và có thể tinh chỉnh dựa trên yêu cầu tiếp theo.
+            Cùng component registry, cùng tốc độ ~3–5s, nhưng bạn có thể nói{" "}
             <em>"bỏ cái cảnh báo đi"</em> hoặc <em>"thêm cột giá vào bảng"</em> và AI hiểu ngữ cảnh.
           </div>
         </div>

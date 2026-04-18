@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   (async () => {
     try {
       const result = streamText({
-        model: openrouter('minimax/minimax-m2.5'),
+        model: openrouter('minimax/minimax-m2.7'),
         system: SYSTEM_PROMPT,
         prompt: `Design a static UI for: ${description}`,
         temperature: 0.3,

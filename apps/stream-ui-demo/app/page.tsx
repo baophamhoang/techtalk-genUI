@@ -19,11 +19,9 @@ const TOOL_RE = /__TOOL__([\s\S]*?)__ENDTOOL__/g;
 
 const EXAMPLE_PROMPTS = [
   "Dashboard quản lý đơn hàng tuần này",
-  "Form đặt lịch khám bệnh với chọn bác sĩ và khung giờ",
-  "Card sản phẩm tai nghe Sony với giỏ hàng",
-  "Bảng thống kê doanh thu Q1 theo tháng",
-  "Form tạo ticket hỗ trợ kỹ thuật với mức độ ưu tiên",
-  "Thống kê tổng quan kho hàng với cảnh báo tồn kho thấp",
+  "Form đặt lịch khám bệnh với chọn bác sĩ",
+  "Card sản phẩm tai nghe Sony WH-1000XM5",
+  "Thống kê kho hàng với cảnh báo tồn kho thấp",
 ];
 
 // ─── Component renderer ───────────────────────────────────────────────────────
@@ -127,28 +125,28 @@ export default function Home() {
   const isDone = phase === "done";
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white flex flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col">
 
       {/* Header */}
-      <header className="border-b border-slate-800 bg-[#111]">
+      <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-violet-600 p-2 rounded-xl">
+            <div className="bg-violet-600 p-2 rounded-xl text-white">
               <Layers size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight">Demo 5 — Stream UI</h1>
-              <p className="text-xs text-slate-400">AI chọn component → render ngay — không sinh code, không iframe</p>
+              <h1 className="text-lg font-black tracking-tight">Demo 3 — Tool Calling</h1>
+              <p className="text-xs text-slate-500">AI chọn component → render ngay — không sinh code, không iframe</p>
             </div>
           </div>
-          <span className="text-xs font-bold px-3 py-1.5 bg-violet-900/50 text-violet-300 rounded-full border border-violet-700 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+          <span className="text-xs font-bold px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full border border-violet-200 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
             TOOL CALLING · GPT-4O-MINI
           </span>
         </div>
 
         {/* Flow */}
-        <div className="max-w-[1400px] mx-auto px-6 pb-3 flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+        <div className="max-w-[1400px] mx-auto px-6 pb-3 flex items-center gap-2 text-xs font-semibold text-slate-400 flex-wrap">
           {[
             { icon: "✍️", label: "Natural Language" },
             { icon: "🤖", label: "AI chọn tools" },
@@ -156,17 +154,17 @@ export default function Home() {
             { icon: "✅", label: "Design system nhất quán" },
           ].map((step, i, arr) => (
             <span key={step.label} className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-950/50 rounded-md border border-violet-900 text-violet-300">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 rounded-md border border-violet-200 text-violet-700">
                 {step.icon} {step.label}
               </span>
-              {i < arr.length - 1 && <ChevronRight size={14} className="text-slate-700" />}
+              {i < arr.length - 1 && <ChevronRight size={14} className="text-slate-300" />}
             </span>
           ))}
         </div>
       </header>
 
       {/* Input */}
-      <div className="border-b border-slate-800 bg-[#111] px-6 py-4">
+      <div className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="max-w-[1400px] mx-auto flex gap-3">
           <div className="flex-1">
             <input
@@ -175,14 +173,14 @@ export default function Home() {
               onChange={e => setDescription(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleGenerate()}
               placeholder="Mô tả UI bạn muốn... VD: 'Dashboard quản lý đơn hàng'"
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
               disabled={isGenerating}
             />
           </div>
           <button
             onClick={() => handleGenerate()}
             disabled={!description.trim() || isGenerating}
-            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap"
+            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap"
           >
             {isGenerating
               ? <><Loader2 size={16} className="animate-spin" /> Composing...</>
@@ -190,30 +188,11 @@ export default function Home() {
             }
           </button>
           {!isIdle && (
-            <button onClick={handleReset} className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl">
-              <RotateCcw size={16} className="text-slate-400" />
+            <button onClick={handleReset} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl">
+              <RotateCcw size={16} className="text-slate-500" />
             </button>
           )}
         </div>
-
-        {/* Quick prompts */}
-        {isIdle && (
-          <div className="max-w-[1400px] mx-auto mt-3 flex gap-2 flex-wrap">
-            <span className="flex items-center gap-1 text-xs text-slate-500">
-              <Lightbulb size={12} /> Thử nhanh:
-            </span>
-            {EXAMPLE_PROMPTS.map(p => (
-              <button
-                key={p}
-                onClick={() => { setDescription(p); handleGenerate(p); }}
-                className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-700 line-clamp-1 text-left"
-                style={{ maxWidth: "260px" }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Main */}
@@ -221,31 +200,31 @@ export default function Home() {
 
         {/* Left: tool call log */}
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-bold text-slate-300 flex items-center gap-2">
+          <h2 className="text-sm font-bold text-slate-600 flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full transition-colors ${
-              isGenerating ? "bg-violet-400 animate-pulse" :
-              isDone && toolCalls.length > 0 ? "bg-green-400" : "bg-slate-600"
+              isGenerating ? "bg-violet-500 animate-pulse" :
+              isDone && toolCalls.length > 0 ? "bg-green-500" : "bg-slate-300"
             }`} />
             {isGenerating ? "🤖 AI đang chọn components..." :
              isDone && toolCalls.length > 0 ? `✅ ${toolCalls.length} component được chọn` :
              "🤖 Tool calls sẽ hiện ở đây"}
           </h2>
 
-          <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-auto flex-1" style={{ minHeight: "520px" }}>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto flex-1" style={{ minHeight: "520px" }}>
             {isIdle ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-3 p-6">
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3 p-6">
                 <Layers size={36} className="stroke-1" />
                 <p className="text-sm font-medium text-center">AI sẽ chọn từ 5 components</p>
                 <div className="flex flex-col gap-1.5 mt-1 w-full">
                   {Object.entries(toolLabels).map(([, label]) => (
-                    <div key={label} className="text-xs text-slate-700 bg-slate-800/50 px-3 py-1.5 rounded-lg font-mono">
+                    <div key={label} className="text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg font-mono border border-slate-100">
                       {label}
                     </div>
                   ))}
                 </div>
               </div>
             ) : toolCalls.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+              <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
                 <Loader2 size={28} className="animate-spin text-violet-500" />
                 <p className="text-sm">AI đang quyết định...</p>
               </div>
@@ -254,24 +233,24 @@ export default function Home() {
                 {toolCalls.map((tc, i) => (
                   <div
                     key={tc.id}
-                    className="bg-slate-800 rounded-xl p-3 border border-violet-900/40"
+                    className="bg-slate-50 rounded-xl p-3 border border-violet-200"
                     style={{ animationDelay: `${i * 100}ms` }}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-5 h-5 rounded-full bg-violet-600 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
                         {i + 1}
                       </span>
-                      <span className="text-xs font-bold text-violet-300 font-mono">
+                      <span className="text-xs font-bold text-violet-700 font-mono">
                         {toolLabels[tc.tool] ?? tc.tool}
                       </span>
                     </div>
-                    <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all leading-relaxed">
+                    <pre className="text-[10px] text-slate-600 font-mono whitespace-pre-wrap break-all leading-relaxed">
                       {(() => { const s = JSON.stringify(tc.args ?? {}, null, 2); return s.slice(0, 280) + (s.length > 280 ? "\n…" : ""); })()}
                     </pre>
                   </div>
                 ))}
                 {isGenerating && (
-                  <div className="flex items-center gap-2 text-xs text-slate-500 pl-1 pt-1">
+                  <div className="flex items-center gap-2 text-xs text-slate-400 pl-1 pt-1">
                     <Loader2 size={11} className="animate-spin" /> Đang xem xét thêm...
                   </div>
                 )}
@@ -282,25 +261,43 @@ export default function Home() {
 
         {/* Right: rendered components */}
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-bold text-slate-300 flex items-center gap-2">
-            <Zap size={14} className={isDone && toolCalls.length > 0 ? "text-green-400" : "text-slate-600"} />
+          <h2 className="text-sm font-bold text-slate-600 flex items-center gap-2">
+            <Zap size={14} className={isDone && toolCalls.length > 0 ? "text-green-500" : "text-slate-300"} />
             {isDone && toolCalls.length > 0
               ? "🚀 UI được render từ design system — không sandbox, không iframe"
               : "🚀 Components sẽ xuất hiện ở đây"}
           </h2>
 
           <div
-            className="flex-1 overflow-auto rounded-xl bg-slate-900 border border-slate-700 p-5"
+            className="flex-1 overflow-auto rounded-xl bg-white border border-slate-200 shadow-sm p-5"
             style={{ minHeight: "520px" }}
           >
             {isIdle ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-3">
-                <div className="text-4xl">⚡</div>
-                <p className="text-sm font-medium">Components render trong &lt;2s</p>
-                <p className="text-xs text-slate-700">AI chọn đúng component — không sinh code ngẫu nhiên</p>
+              <div className="flex flex-col items-center justify-center h-full gap-5 px-4">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">⚡</div>
+                  <p className="text-sm font-semibold text-slate-600">Components render trong &lt;3s</p>
+                  <p className="text-xs text-slate-400 mt-1">AI chọn đúng component — không sinh code ngẫu nhiên</p>
+                </div>
+                <div className="w-full max-w-sm">
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mb-2 justify-center">
+                    <Lightbulb size={12} /> Thử nhanh:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {EXAMPLE_PROMPTS.map(p => (
+                      <button
+                        key={p}
+                        onClick={() => { setDescription(p); handleGenerate(p); }}
+                        className="text-xs text-left px-3 py-2.5 bg-white hover:bg-violet-50 text-slate-600 hover:text-violet-700 rounded-xl border border-slate-200 hover:border-violet-200 transition-colors leading-snug shadow-sm"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : toolCalls.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+              <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
                 <Loader2 size={32} className="animate-spin text-violet-500" />
                 <p className="text-sm">Đợi AI chọn components...</p>
               </div>
@@ -318,14 +315,14 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <div className="border-t border-slate-800 bg-[#111]">
+      <div className="border-t border-slate-200 bg-white">
         <div className="max-w-[1400px] mx-auto px-6 py-5">
-          <div className="bg-violet-950/30 border border-violet-800/40 rounded-xl p-4 text-sm text-violet-200">
-            <strong>Tại sao tốt hơn Demo 3 & 4?</strong>{" "}
-            AI không viết code — nó chỉ <em>chọn component</em> và <em>điền tham số</em> (~50 tokens thay vì ~1000).
-            Components render trực tiếp trong React app — không sandbox, không iframe, không Babel.
-            Design system nhất quán 100% vì tất cả đều từ cùng một component library.
-            Thời gian phản hồi: <strong>~1–3s</strong>.
+          <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-sm text-violet-800">
+            <strong>Tại sao tốt hơn Demo 2?</strong>{" "}
+            Demo 2 để AI sinh JSON schema — renderer vẫn là bottleneck, chỉ tạo được form field đơn giản.
+            Demo 3 đảo ngược: developer định nghĩa component library, AI chỉ <em>chọn component</em> và <em>điền tham số</em> (~50 tokens).
+            Kết quả: rich UI (card, table, stats, alert), design system nhất quán 100%, render trực tiếp trong React —{" "}
+            <strong>không sandbox, không iframe, không Babel</strong>.
           </div>
         </div>
       </div>
