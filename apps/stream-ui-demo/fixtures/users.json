@@ -1,0 +1,9 @@
+{
+  "users": [
+    { "id": "U001", "name": "Nguyễn Văn Minh", "email": "minh.nguyen@email.com", "totalOrders": 12, "totalSpent": "45,000,000", "joinDate": "2025-06-15" },
+    { "id": "U002", "name": "Trần Thị Lan", "email": "lan.tran@email.com", "totalOrders": 28, "totalSpent": "156,000,000", "joinDate": "2024-11-20" },
+    { "id": "U003", "name": "Lê Hoàng Tuấn", "email": "tuan.le@email.com", "totalOrders": 5, "totalSpent": "12,500,000", "joinDate": "2026-03-01" },
+    { "id": "U004", "name": "Phạm Thị An", "email": "an.pham@email.com", "totalOrders": 19, "totalSpent": "89,000,000", "joinDate": "2025-01-10" },
+    { "id": "U005", "name": "Đặng Văn Hùng", "email": "hung.dang@email.com", "totalOrders": 8, "totalSpent": "28,000,000", "joinDate": "2025-09-22" }
+  ]
+}

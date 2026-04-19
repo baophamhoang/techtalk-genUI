@@ -1,0 +1,36 @@
+{
+  "personas": [
+    {
+      "id": "minh",
+      "name": "Minh",
+      "age": 28,
+      "city": "HCM",
+      "profile": "Office worker",
+      "pattern": "Healthy-leaning, 5 orders/week, office-lunch, AOV 60k"
+    },
+    {
+      "id": "lan",
+      "name": "Lan",
+      "age": 35,
+      "city": "Hanoi",
+      "profile": "Single mother, 2 kids",
+      "pattern": "Group orders of 3, weekend-heavy, AOV 180k, budget-conscious"
+    },
+    {
+      "id": "tuan",
+      "name": "Tuấn",
+      "age": 22,
+      "city": "Da Nang",
+      "profile": "Student",
+      "pattern": "Late-night (>22:00), AOV 35k, fast/cheap food, freeship chaser"
+    },
+    {
+      "id": "an",
+      "name": "An",
+      "age": 40,
+      "city": "HCM",
+      "profile": "Family of 4",
+      "pattern": "Premium spender, AOV 300k, weekend dinner + holidays, quality-focused"
+    }
+  ]
+}

@@ -1,317 +1,406 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Send, RotateCcw, Bot, User, Loader2, Layers, ChevronRight, Lightbulb } from "lucide-react";
-import { ProductCard } from "./components/ProductCard";
-import { FormPanel } from "./components/FormPanel";
-import { StatsGrid } from "./components/StatsGrid";
-import { DataTable } from "./components/DataTable";
-import { AlertBanner } from "./components/AlertBanner";
+import { useState } from "react";
+import { Bot, Sun, Cloud, Moon, Thermometer, Search, TrendingUp, AlertTriangle } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+interface SignalBundle {
+  persona: { id: string; name: string; age: number; city: string; profile: string; pattern: string };
+  scenario: string;
+  time: string;
+  weather: { temp: number; condition: string };
+  behavior: { recentOrders: number; searchHistory: string[]; sessionMinutes: number };
+  location: string;
+}
+
 interface ToolCall {
-  tool: string;
+  name: string;
   args: Record<string, unknown>;
 }
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  toolCalls?: ToolCall[];
+interface ComposeResponse {
+  bundle: SignalBundle;
+  ok: boolean;
+  tools: ToolCall[];
+  raw?: string;
+  issues?: unknown[];
+  latencyMs: number;
+  tokens: number;
 }
 
-// ─── Component renderer ───────────────────────────────────────────────────────
-function RenderedTool({ tool, args }: { tool: string; args: Record<string, unknown> }) {
-  switch (tool) {
-    case "showProductCard":  return <ProductCard {...(args as any)} />;
-    case "showForm":         return <FormPanel {...(args as any)} />;
-    case "showStatsGrid":    return <StatsGrid {...(args as any)} />;
-    case "showDataTable":    return <DataTable {...(args as any)} />;
-    case "showAlertBanner":  return <AlertBanner {...(args as any)} />;
-    default:                 return null;
-  }
+function MetricsPanel({ label, latencyMs, tokens, source, determinism }: { label: string; latencyMs: number; tokens: number; source: string; determinism?: number }) {
+  const sourceColors: Record<string, string> = {
+    ai: "bg-emerald-100 text-emerald-700",
+    fallback: "bg-amber-100 text-amber-700",
+  };
+  const sourceLabels: Record<string, string> = { ai: "AI", fallback: "Fallback" };
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">{label}</h3>
+        <span className={`text-xs font-bold px-2 py-1 rounded-full ${sourceColors[source] ?? "bg-slate-100 text-slate-600"}`}>
+          {sourceLabels[source] ?? source}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-slate-50 rounded-lg p-3">
+          <div className="text-xs text-slate-500 mb-1">Latency</div>
+          <div className="text-lg font-bold text-slate-800">{latencyMs}ms</div>
+        </div>
+        <div className="bg-slate-50 rounded-lg p-3">
+          <div className="text-xs text-slate-500 mb-1">Tokens</div>
+          <div className="text-lg font-bold text-slate-800">{tokens.toLocaleString()}</div>
+        </div>
+      </div>
+      {determinism !== undefined && (
+        <div className="bg-slate-50 rounded-lg p-3">
+          <div className="text-xs text-slate-500 mb-1">Determinism</div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 transition-all" style={{ width: `${determinism}%` }} />
+            </div>
+            <span className="text-sm font-bold text-slate-700">{determinism}%</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-const toolLabels: Record<string, string> = {
-  showProductCard:  "🛍️  ProductCard",
-  showForm:         "📝  FormPanel",
-  showStatsGrid:    "📊  StatsGrid",
-  showDataTable:    "📋  DataTable",
-  showAlertBanner:  "🔔  AlertBanner",
-};
-
-const STARTER_PROMPTS = [
-  "Dashboard quản lý đơn hàng tuần này",
-  "Form đặt lịch khám bệnh với chọn bác sĩ",
-  "Card sản phẩm tai nghe Sony với giỏ hàng",
-  "Thống kê tổng quan kho hàng với cảnh báo",
+const PERSONAS = [
+  { id: "minh", name: "Minh", label: "Office worker · HCM", icon: "💼" },
+  { id: "lan", name: "Lan", label: "Single mother · Hanoi", icon: "👩‍👧‍👦" },
+  { id: "tuan", name: "Tuấn", label: "Student · Đà Nẵng", icon: "🎓" },
+  { id: "an", name: "An", label: "Family of 4 · HCM", icon: "👨‍👩‍👧‍👦" },
 ];
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+const SCENARIOS = [
+  { id: "baseline", label: "📊 Baseline (10:00)", desc: "Normal browsing — default home grid" },
+  { id: "weather", label: "❄️ Weather Shift (14:00)", desc: "Cold snap — comfort food restructure" },
+  { id: "searchAbandon", label: "🔍 Search Abandon (22:30)", desc: "Multiple searches no order — mood picker" },
+];
+
+function HomeSurface({ tools }: { tools: ToolCall[] }) {
+  if (tools.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-slate-400">
+        <p className="text-sm">Run a scenario to see the UI</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {tools.map((tc, i) => {
+        if (tc.name === "restructureHome") {
+          const args = tc.args as { hero?: { title: string; subtitle: string; tag?: string }; rows: Array<{ title: string; items: Array<{ name: string; price: string; badge?: string }> }>; hideDefaultRows?: boolean };
+          return (
+            <div key={i} className="space-y-3">
+              {args.hero && (
+                <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-4 text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    {args.hero.tag && (
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{args.hero.tag}</span>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-bold">{args.hero.title}</h3>
+                  <p className="text-sm opacity-80">{args.hero.subtitle}</p>
+                </div>
+              )}
+              {args.rows.map((row, j) => (
+                <div key={j} className="space-y-2">
+                  <h4 className="text-sm font-bold text-slate-700">{row.title}</h4>
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {row.items.map((item, k) => (
+                      <div key={k} className="flex-shrink-0 w-36 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                        <div className="bg-slate-100 rounded-lg h-24 mb-2 flex items-center justify-center text-2xl">🍜</div>
+                        <div className="text-xs font-medium text-slate-800 truncate">{item.name}</div>
+                        <div className="text-xs text-violet-600 font-bold">{item.price}</div>
+                        {item.badge && (
+                          <span className="inline-block mt-1 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">{item.badge}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        if (tc.name === "showMoodPicker") {
+          const args = tc.args as { prompt: string; moods: Array<{ label: string; icon: string; curatedItems: Array<{ name: string; price: string }> }> };
+          return (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-700 mb-3">{args.prompt}</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {args.moods.map((mood, j) => (
+                  <div key={j} className="bg-slate-50 rounded-xl p-4 text-center border border-slate-200 hover:border-violet-300 cursor-pointer">
+                    <div className="text-2xl mb-2">{mood.icon}</div>
+                    <div className="text-sm font-bold text-slate-700 mb-2">{mood.label}</div>
+                    <div className="space-y-1">
+                      {mood.curatedItems.slice(0, 2).map((item, k) => (
+                        <div key={k} className="text-xs text-slate-500">{item.name} — {item.price}</div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (tc.name === "showContextBanner") {
+          const args = tc.args as { tone: string; title: string; message: string };
+          const colors = {
+            info: "bg-blue-50 border-blue-200 text-blue-800",
+            warning: "bg-amber-50 border-amber-200 text-amber-800",
+            success: "bg-green-50 border-green-200 text-green-800",
+          };
+          return (
+            <div key={i} className={`rounded-xl p-4 border ${colors[args.tone as keyof typeof colors] ?? colors.info}`}>
+              <div className="font-bold text-sm">{args.title}</div>
+              <div className="text-xs mt-1 opacity-80">{args.message}</div>
+            </div>
+          );
+        }
+
+        if (tc.name === "showCuratedRow") {
+          const args = tc.args as { title: string; tag?: string; items: Array<{ name: string; price: string; priceRange?: string }> };
+          return (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="text-sm font-bold text-slate-700">{args.title}</h4>
+                {args.tag && (
+                  <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{args.tag}</span>
+                )}
+              </div>
+              <div className="flex gap-3 overflow-x-auto">
+                {args.items.map((item, j) => (
+                  <div key={j} className="flex-shrink-0 w-32 text-center">
+                    <div className="bg-slate-100 rounded-lg h-20 mb-1 flex items-center justify-center text-xl">🍲</div>
+                    <div className="text-xs font-medium text-slate-700 truncate">{item.name}</div>
+                    <div className="text-xs text-violet-600">{item.priceRange ?? item.price}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })}
+    </div>
+  );
+}
+
+function PipelineLog({ bundle, result }: { bundle: SignalBundle; result: ComposeResponse }) {
+  return (
+    <div className="bg-slate-900 rounded-xl p-4 text-xs font-mono overflow-auto h-full">
+      <div className="text-emerald-400 font-bold mb-3">📋 Pipeline Log</div>
+      
+      <div className="mb-4">
+        <div className="text-slate-400 mb-1">SIGNAL BUNDLE</div>
+        <pre className="text-slate-300 whitespace-pre-wrap">
+          {JSON.stringify({
+            persona: bundle.persona.name,
+            scenario: bundle.scenario,
+            time: bundle.time,
+            weather: `${bundle.weather.temp}°C ${bundle.weather.condition}`,
+            location: bundle.location,
+            recentOrders: bundle.behavior.recentOrders,
+            searchHistory: bundle.behavior.searchHistory,
+          }, null, 2)}
+        </pre>
+      </div>
+
+      {result.ok ? (
+        <div>
+          <div className="text-slate-400 mb-1">TOOL CALLS</div>
+          <div className="space-y-2">
+            {result.tools.map((tc, i) => (
+              <div key={i} className="bg-slate-800 rounded p-2">
+                <div className="text-violet-400">{tc.name}</div>
+                <pre className="text-slate-400 mt-1 whitespace-pre-wrap">
+                  {JSON.stringify(tc.args, null, 2).slice(0, 300)}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-red-900/30 border border-red-700/50 rounded p-3">
+          <div className="text-red-400 font-bold">❌ VALIDATION FAILED</div>
+          <div className="text-red-300 mt-1">Fallback to baseline</div>
+          {result.issues && (
+            <pre className="text-red-400 mt-2 whitespace-pre-wrap">
+              {JSON.stringify(result.issues, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 pt-3 border-t border-slate-700">
+        <div className="text-slate-500">
+          Latency: {result.latencyMs}ms · Tokens: {result.tokens}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const [messages, setMessages]     = useState<Message[]>([]);
-  const [input, setInput]           = useState("");
-  const [isLoading, setIsLoading]   = useState(false);
-  const bottomRef                   = useRef<HTMLDivElement>(null);
-  const inputRef                    = useRef<HTMLInputElement>(null);
+  const [selectedPersona, setSelectedPersona] = useState("minh");
+  const [selectedScenario, setSelectedScenario] = useState("baseline");
+  const [result, setResult] = useState<ComposeResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasRun, setHasRun] = useState(false);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
-
-  const sendMessage = async (text?: string) => {
-    const content = text ?? input.trim();
-    if (!content || isLoading) return;
-    setInput("");
-
-    const userMessage: Message = { role: "user", content };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+  const handleRun = async () => {
     setIsLoading(true);
+    setHasRun(true);
+    setResult(null);
 
     try {
-      // Build API-format history (only role + content, no toolCalls metadata)
-      const apiMessages = nextMessages.map(m => ({ role: m.role, content: m.content }));
-
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ personaId: selectedPersona, scenario: selectedScenario }),
       });
-
-      const { text: replyText, toolCalls } = await res.json();
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: replyText,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch {
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: "Đã xảy ra lỗi kết nối. Vui lòng thử lại.",
-      }]);
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
-  const handleReset = () => {
-    setMessages([]);
-    setInput("");
-    setIsLoading(false);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const isEmpty = messages.length === 0;
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col">
-
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white flex-shrink-0 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-600 p-2 rounded-xl text-white">
               <Bot size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight">Demo 3 — Agentic UI</h1>
-              <p className="text-xs text-slate-500">Hội thoại với AI để xây và tinh chỉnh UI theo thời gian thực</p>
+              <h1 className="text-lg font-black tracking-tight">Demo 3 — Adaptive Context-Aware UI</h1>
+              <p className="text-xs text-slate-500">Food delivery · AI reads context · Restructures UI</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              AGENTIC · MINIMAX M2.7
-            </span>
-            {!isEmpty && (
-              <button
-                onClick={handleReset}
-                className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-700 transition-colors"
-                title="Reset conversation"
-              >
-                <RotateCcw size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Flow */}
-        <div className="max-w-4xl mx-auto px-6 pb-3 flex items-center gap-2 text-xs font-semibold text-slate-400 flex-wrap">
-          {[
-            { icon: "💬", label: "Mô tả UI bằng chat" },
-            { icon: "🤖", label: "AI gọi tools" },
-            { icon: "⚡", label: "Components render ngay" },
-            { icon: "🔄", label: "Tinh chỉnh qua hội thoại" },
-          ].map((step, i, arr) => (
-            <span key={step.label} className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-md border border-emerald-200 text-emerald-700">
-                {step.icon} {step.label}
-              </span>
-              {i < arr.length - 1 && <ChevronRight size={14} className="text-slate-300" />}
-            </span>
-          ))}
+          <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+            🌐 CONSUMER · FOOD DELIVERY
+          </span>
         </div>
       </header>
 
-      {/* Chat thread */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-6">
-
-          {/* Empty state */}
-          {isEmpty && (
-            <div className="flex flex-col items-center justify-center py-16 gap-6">
-              <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center max-w-sm">
-                <div className="text-4xl mb-3">🤖</div>
-                <h2 className="font-bold text-slate-700 mb-2">Bắt đầu hội thoại</h2>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Mô tả UI bạn muốn. Tôi sẽ xây ngay, và bạn có thể yêu cầu chỉnh sửa bất cứ lúc nào.
-                </p>
-              </div>
-              <div className="w-full max-w-lg">
-                <p className="text-xs text-slate-400 flex items-center gap-1 mb-2">
-                  <Lightbulb size={12} /> Thử nhanh:
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {STARTER_PROMPTS.map(p => (
-                    <button
-                      key={p}
-                      onClick={() => sendMessage(p)}
-                      className="text-xs text-left px-3 py-2.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 rounded-xl border border-slate-200 transition-colors leading-snug shadow-sm"
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Messages */}
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-              {/* Avatar */}
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                msg.role === "user"
-                  ? "bg-slate-200 text-slate-600"
-                  : "bg-emerald-600 text-white"
-              }`}>
-                {msg.role === "user" ? <User size={15} /> : <Bot size={15} />}
-              </div>
-
-              {/* Bubble + components */}
-              <div className={`flex-1 flex flex-col gap-3 ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                {/* Text bubble */}
-                {msg.content && (
-                  <div className={`max-w-lg px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-emerald-600 text-white rounded-tr-sm"
-                      : "bg-white text-slate-700 rounded-tl-sm border border-slate-200 shadow-sm"
-                  }`}>
-                    {msg.content}
-                  </div>
-                )}
-
-                {/* Rendered components */}
-                {msg.toolCalls && msg.toolCalls.length > 0 && (
-                  <div className="w-full max-w-2xl space-y-3">
-                    {/* Tool call pills */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {msg.toolCalls.map((tc, j) => (
-                        <span
-                          key={j}
-                          className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-mono"
-                        >
-                          {toolLabels[tc.tool] ?? tc.tool}
-                        </span>
-                      ))}
-                    </div>
-                    {/* Rendered components */}
-                    {msg.toolCalls.map((tc, j) => (
-                      <div key={j} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <RenderedTool tool={tc.tool} args={tc.args} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white">
-                <Bot size={15} />
-              </div>
-              <div className="bg-white border border-slate-200 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2 text-slate-500 text-sm">
-                <Loader2 size={14} className="animate-spin text-emerald-600" />
-                AI đang xây UI...
-              </div>
-            </div>
-          )}
-
-          <div ref={bottomRef} />
-        </div>
-      </main>
-
-      {/* Input */}
-      <div className="border-t border-slate-200 bg-white flex-shrink-0">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          {/* Suggestion chips after first AI response */}
-          {messages.some(m => m.role === "assistant" && m.toolCalls?.length) && !isLoading && (
-            <div className="flex gap-2 flex-wrap mb-3">
-              {["Thêm cảnh báo tồn kho thấp", "Đổi sang dạng tuần", "Thêm cột trạng thái vào bảng", "Làm form đơn giản hơn"].map(s => (
+      <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-6 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+        {/* Left panel */}
+        <div className="space-y-4">
+          {/* Persona picker */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <h2 className="text-sm font-bold text-slate-600 mb-3">👤 Persona</h2>
+            <div className="space-y-2">
+              {PERSONAS.map(p => (
                 <button
-                  key={s}
-                  onClick={() => sendMessage(s)}
-                  className="text-xs px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 rounded-full border border-slate-200 transition-colors shadow-sm"
+                  key={p.id}
+                  onClick={() => setSelectedPersona(p.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
+                    selectedPersona === p.id
+                      ? "bg-emerald-50 border-2 border-emerald-500"
+                      : "bg-slate-50 border-2 border-transparent hover:bg-slate-100"
+                  }`}
                 >
-                  {s}
+                  <span className="text-2xl">{p.icon}</span>
+                  <div>
+                    <div className="font-bold text-sm">{p.name}</div>
+                    <div className="text-xs text-slate-500">{p.label}</div>
+                  </div>
                 </button>
               ))}
             </div>
-          )}
+          </div>
 
-          <div className="flex gap-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              placeholder={isEmpty ? "Mô tả UI bạn muốn..." : "Yêu cầu chỉnh sửa hoặc thêm component..."}
-              className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              disabled={isLoading}
-              autoFocus
+          {/* Context simulator */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <h2 className="text-sm font-bold text-slate-600 mb-3">🎯 Context Simulator</h2>
+            <div className="space-y-2">
+              {SCENARIOS.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedScenario(s.id)}
+                  className={`w-full p-3 rounded-xl text-left transition-all ${
+                    selectedScenario === s.id
+                      ? "bg-emerald-50 border-2 border-emerald-500"
+                      : "bg-slate-50 border-2 border-transparent hover:bg-slate-100"
+                  }`}
+                >
+                  <div className="font-bold text-sm">{s.label}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{s.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Run button */}
+          <button
+            onClick={handleRun}
+            disabled={isLoading}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-top-transparent rounded-full animate-spin" />
+                Composing...
+              </>
+            ) : (
+              "▶ Run Scenario"
+            )}
+          </button>
+
+          {/* Metrics */}
+          {result && (
+            <MetricsPanel
+              label="Demo 3"
+              latencyMs={result.latencyMs}
+              tokens={result.tokens}
+              source={result.ok ? "ai" : "fallback"}
+              determinism={result.ok ? 80 : 0}
             />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isLoading}
-              className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
-            >
-              {isLoading
-                ? <Loader2 size={16} className="animate-spin" />
-                : <Send size={16} />
-              }
-            </button>
-          </div>
+          )}
         </div>
-      </div>
 
-      {/* Footer explanation */}
-      <div className="border-t border-slate-200 bg-white flex-shrink-0">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800">
-            <strong>Tại sao tốt hơn Demo 2 (single-shot)?</strong>{" "}
-            Demo 2 stateless — mỗi prompt là một request độc lập, AI không biết đã xây gì.
-            Demo 3 gửi <em>toàn bộ lịch sử hội thoại</em> mỗi lượt — AI có <em>bộ nhớ</em>, biết mình đã xây gì và có thể tinh chỉnh dựa trên yêu cầu tiếp theo.
-            Cùng component registry, cùng tốc độ ~3–5s, nhưng bạn có thể nói{" "}
-            <em>"bỏ cái cảnh báo đi"</em> hoặc <em>"thêm cột giá vào bảng"</em> và AI hiểu ngữ cảnh.
+        {/* Right panel */}
+        <div className="space-y-4">
+          {/* Disclaimer */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+            <span className="text-amber-700 font-bold">⚠️ Mock context simulator</span>
+            <span className="text-amber-600 ml-2">Production reads from weather APIs, analytics events, order DB, device telemetry.</span>
           </div>
+
+          {/* Home surface */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 min-h-[400px] shadow-sm">
+            <h2 className="text-sm font-bold text-slate-600 mb-4">🏠 Home Surface</h2>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="w-8 h-8 border-3 border-emerald-500 border-top-transparent rounded-full animate-spin" />
+              </div>
+            ) : result ? (
+              <HomeSurface tools={result.tools} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
+                Run a scenario to see the adaptive UI
+              </div>
+            )}
+          </div>
+
+          {/* Pipeline log */}
+          {result && hasRun && (
+            <div className="min-h-[300px]">
+              <PipelineLog bundle={result.bundle} result={result} />
+            </div>
+          )}
         </div>
       </div>
     </div>

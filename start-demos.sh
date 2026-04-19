@@ -3,7 +3,7 @@
 # GenUI Techtalk - Start All Demos
 # Run with: ./start-demos.sh
 
-set -e  # Exit on error
+set -e
 
 echo "🚀 Starting GenUI Techtalk Demos..."
 echo "========================================"
@@ -27,34 +27,34 @@ start_demo() {
     local demo_name=$1
     local demo_dir=$2
     local port=$3
-    
+
     echo "📦 Starting $demo_name..."
-    
+
     cd "$demo_dir" || exit 1
-    
+
     # Check if node_modules exists
     if [ ! -d "node_modules" ]; then
         echo "   Installing dependencies..."
         npm install --silent > "../../logs/${demo_name}-install.log" 2>&1
     fi
-    
+
     # Start the demo in background
     npm run dev > "../../logs/${demo_name}.log" 2>&1 &
     DEMO_PID=$!
     echo $DEMO_PID > "../../logs/${demo_name}.pid"
-    
+
     # Wait for server to start
     echo "   Waiting for server on port $port..."
     sleep 5
-    
+
     # Check if server is running
     if curl -s "http://localhost:$port" > /dev/null 2>&1; then
         echo "   ✅ $demo_name running at http://localhost:$port"
     else
         echo "   ⚠️  $demo_name may not be ready yet. Check logs/${demo_name}.log"
     fi
-    
-    cd ../..
+
+    cd - > /dev/null
 }
 
 # Clean up previous runs
@@ -65,7 +65,7 @@ rm -f logs/*.pid
 
 # Start demos
 echo ""
-start_demo "JSON-Render-Demo" "apps/json-render-demo" "3101"
+start_demo "JSON-Render-Demo" "apps/json-render-demo" "3000"
 echo ""
 start_demo "Stream-UI-Demo" "apps/stream-ui-demo" "3102"
 echo ""
@@ -83,11 +83,11 @@ echo ""
 echo "📁 Logs directory: ./logs"
 echo ""
 echo "🛑 To stop all demos:"
-echo "   ./stop-demos.sh"
-echo "   or press Ctrl+C and run: pkill -f \"next\|vite\""
+echo "   pkill -f 'next dev'"
+echo "   or Ctrl+C and run: pkill -f 'next'"
 echo ""
 echo "🔧 API Key Notes:"
-echo "   - All demos need OPENROUTER_API_KEY (or VITE_OPENROUTER_API_KEY for Demo 1)"
+echo "   - All demos need OPENROUTER_API_KEY in .env.local"
 echo "========================================"
 
 # Keep script running

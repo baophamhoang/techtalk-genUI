@@ -1,0 +1,15 @@
+{
+  "name": "@techtalk/shared",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./ai/openrouter": "./src/ai/openrouter.ts",
+    "./schemas/formSchema": "./src/schemas/formSchema.ts",
+    "./ui/FormRenderer": "./src/ui/FormRenderer.tsx",
+    "./ui/MetricsPanel": "./src/ui/MetricsPanel.tsx"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "typescript": "^5.9.3"
+  }
+}

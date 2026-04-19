@@ -1,42 +1,33 @@
-export interface DataTableProps {
+"use client";
+
+interface Props {
   title: string;
   columns: string[];
   rows: string[][];
 }
 
-export function DataTable({ title, columns = [], rows = [] }: DataTableProps) {
+export function DataTable({ title, columns, rows }: Props) {
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900">{title}</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50">
-              {columns.map((col, i) => (
-                <th key={i} className="text-left px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {col}
-                </th>
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm overflow-auto">
+      <h3 className="text-sm font-bold text-slate-700 mb-4">{title}</h3>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-200">
+            {columns.map((col, i) => (
+              <th key={i} className="text-left py-2 px-3 font-bold text-slate-600">{col}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+              {row.map((cell, j) => (
+                <td key={j} className="py-2 px-3 text-slate-700">{cell}</td>
               ))}
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, ri) => (
-              <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                {row.map((cell, ci) => (
-                  <td key={ci} className="px-6 py-3.5 text-gray-700 border-t border-gray-50">
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/50">
-        <p className="text-xs text-gray-400">{rows.length} bản ghi</p>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

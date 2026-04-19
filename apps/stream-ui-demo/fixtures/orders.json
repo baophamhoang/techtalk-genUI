@@ -1,0 +1,9 @@
+{
+  "orders": [
+    { "id": "DH001", "customer": "Nguyễn Văn Minh", "product": "Tai nghe Sony WH-1000XM5", "amount": "5,000,000", "status": "delivered", "date": "2026-04-18" },
+    { "id": "DH002", "customer": "Trần Thị Lan", "product": "MacBook Pro M3", "amount": "45,000,000", "status": "shipping", "date": "2026-04-18" },
+    { "id": "DH003", "customer": "Lê Hoàng Tuấn", "product": "iPhone 15 Pro Max", "amount": "38,000,000", "status": "processing", "date": "2026-04-17" },
+    { "id": "DH004", "customer": "Phạm Thị An", "product": "Samsung Galaxy S24 Ultra", "amount": "28,500,000", "status": "delivered", "date": "2026-04-17" },
+    { "id": "DH005", "customer": "Đặng Văn Hùng", "product": "AirPods Pro 2", "amount": "5,200,000", "status": "delivered", "date": "2026-04-16" }
+  ]
+}
