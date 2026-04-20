@@ -1,26 +1,15 @@
 {
-  "title": "Sales Dashboard",
-  "period": "Tuần này",
-  "metrics": [
-    { "label": "Tổng doanh thu", "value": "1,234,500,000", "unit": "đ", "trend": "up", "trendValue": "+12% so với tuần trước" },
-    { "label": "Đơn hàng", "value": "847", "unit": "đơn", "trend": "up", "trendValue": "+8%" },
-    { "label": "Khách hàng mới", "value": "156", "unit": "người", "trend": "up", "trendValue": "+23%" },
-    { "label": "Tỷ lệ chuyển đổi", "value": "3.2", "unit": "%", "trend": "down", "trendValue": "-0.5%" }
+  "period": "Tháng 3/2026",
+  "totalRevenue": 450000000,
+  "revenueByChannel": [
+    { "channel": "Shopee", "revenue": 150000000 },
+    { "channel": "Tiktok Shop", "revenue": 200000000 },
+    { "channel": "Website", "revenue": 50000000 },
+    { "channel": "Cửa hàng", "revenue": 50000000 }
   ],
-  "lineChart": {
-    "series": [
-      { "name": "Doanh thu", "data": [120, 150, 180, 160, 200, 220, 250, 230, 280, 300, 280, 320] }
-    ]
-  },
-  "barChart": {
-    "categories": ["T1", "T2", "T3", "T4", "T5", "T6", "T7"],
-    "values": [120, 150, 180, 160, 200, 220, 250]
-  },
   "topProducts": [
-    { "name": "Tai nghe Sony WH-1000XM5", "revenue": "125,000,000", "units": 250 },
-    { "name": "MacBook Pro M3", "revenue": "450,000,000", "units": 15 },
-    { "name": "iPhone 15 Pro Max", "revenue": "380,000,000", "units": 38 },
-    { "name": "Samsung Galaxy S24 Ultra", "revenue": "285,000,000", "units": 57 },
-    { "name": "AirPods Pro 2", "revenue": "156,000,000", "units": 312 }
+    { "name": "Tai nghe không dây", "sold": 1200 },
+    { "name": "Loa Bluetooth", "sold": 850 },
+    { "name": "Sạc dự phòng", "sold": 300 }
   ]
 }

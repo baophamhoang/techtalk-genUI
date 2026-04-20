@@ -107,11 +107,34 @@ A small nav strip at the top of each page links to the other.
 
 #### Mode 3 — GenUI
 
-- `app/api/genui/form/route.ts` accepts `{ industry, workflow, requirement }`.
+- `app/api/genui/form/route.ts` accepts `{ bucket, description }`.
 - Route calls `callOpenRouter`, runs `extractJson`, then `FormSchema.safeParse(...)`.
 - On success: return `{ schema, latencyMs, tokens }`.
 - On failure: return `{ ok: false, raw, issues }`. Client renders the raw AI JSON + the Zod issues in place of the form, plus a "retry" button.
 - Record `{ source: 'ai' | 'fallback', latencyMs, tokens, determinism? }`.
+
+##### GenUI Scenarios
+
+Two scenario buckets in `src/scenarios/genui.ts`. Each bucket presets the system prompt and exposes a describe-textarea + "Generate form" button:
+
+- **Bucket 1 — Dev / ops artifact triage.** Input: a paste of an unknown artifact (stack trace, config snippet, API response, slow query, log tail). The prompt primes the model to produce follow-up fields appropriate for the inferred artifact type (env vars for stack trace, topology for config, etc.).
+- **Bucket 2 — Consumer service intake.** Input: a free-text description of a reactive problem across unbounded trades (plumbing, HVAC, auto, vet, IT helpdesk). The prompt primes the model to produce an intake form specific to the trade inferred from the description.
+
+Flow in both buckets: describe once → generate → fill → submit → done. Single-turn, no chat.
+
+##### Visual Guard Rails (Mode 3)
+
+To keep Mode 3 visually distinct from Demo 2 (chatbox):
+
+- No chat bubbles, no message history, no typing indicator.
+- Single textarea input labelled by bucket ("Mô tả sự cố" / "Mô tả yêu cầu dịch vụ").
+- One action button ("Tạo form phù hợp").
+- Generated form appears below the input as a reveal — not streamed token-by-token.
+- Form has an explicit submit button; submit is the terminal state.
+
+##### Tech Pattern (Mode 3)
+
+One-shot structured output: a single `callOpenRouter` call returns a complete JSON blob parsed as `FormSchema`. Conceptually equivalent to Vercel AI SDK's `generateObject`. No tool calls, no streaming of UI components, no multi-turn state.
 
 ### Use Cases (static schemas)
 
@@ -178,13 +201,27 @@ No `NEXT_PUBLIC_*` variants for this key.
 
 ---
 
-## Demo 2 — Copilot Command Bar
+## Tech Pattern: Demo 1 vs Demo 2
+
+| Axis | Demo 1 (Mode 3) | Demo 2 |
+|---|---|---|
+| Output shape | One atomic JSON blob matching a single schema | Interleaved stream of prose tokens + tool-call fragments |
+| LLM API pattern | `generateObject` equivalent (structured output) | `streamUI` equivalent (streaming tool-call rendering) |
+| Component classes exposed to LLM | Exactly one: `FormSchema` | Palette of N: chart, card list, form, kpi, table |
+| Turn count | 1 (describe → generate → fill → submit) | N (multi-turn conversation with history) |
+| Naming lineage | Structured output — existed since 2023 | "Generative UI" — coined by Vercel AI SDK in 2024 |
+
+`json-render-demo` exposes a single component class (form) to the LLM — that is its ceiling. `stream-ui-demo` exposes a palette and lets the LLM compose from it at runtime; this is why chat is GenUI's native habitat and form-only is GenUI's narrowest use case.
+
+---
+
+## Demo 2 — Chat Assistant with Inline UI
 
 Location: `apps/stream-ui-demo/`
 
 ### Pattern
 
-User-initiated single-shot GenUI. User types a prompt; AI composes a dashboard by calling tools in a single LLM turn.
+Multi-turn chatbox where the AI's reply may interleave prose with widgets streamed inline between message text. Each turn the AI can choose zero or more widgets from a component palette.
 
 ### Current State
 
@@ -195,47 +232,57 @@ User-initiated single-shot GenUI. User types a prompt; AI composes a dashboard b
 
 ### Target State
 
-**Use case: Internal Dashboard Builder.** Single screen: prompt input → AI streams tool calls → each tool call appends a widget to a dashboard grid.
+**Use case: Chat assistant with inline UI.** One chatbox, message history visible, AI interleaves prose with inline widgets per turn. Three target intents demonstrated on stage:
+
+- **Analytics** — "Doanh thu tháng 3 theo kênh" → inline bar chart.
+- **Navigation / choice** — "Tìm khách sạn Đà Nẵng tối nay dưới 5 triệu" → inline card list.
+- **Input capture** — "Đặt bàn nhà hàng cho 4 người tối mai" → inline form widget; submit posts the payload back into the chat as a user turn, conversation continues.
 
 ### Tool Set
 
-Replace existing tools with four dashboard-focused tools:
+Chat-oriented palette emphasising component variety (viz + navigation + input):
 
-- `add_kpi({ title, value, delta })`
-- `add_line_chart({ title, series })`
-- `add_bar_chart({ title, categories, values })`
-- `add_table({ title, columns, rows })`
+- `show_chart({ title, kind: 'line' | 'bar', series })` — data visualisation
+- `show_card_list({ title, cards: { title, subtitle?, meta?, ctaLabel?, ctaHref? }[] })` — navigation / choice
+- `show_form({ title, fields, submitLabel })` — input capture; payload reuses `FormSchema` from `@techtalk/shared` so the field renderer is shared with Demo 1
+- `show_kpi({ title, value, delta })` — single-metric callout
+- `show_table({ title, columns, rows })` — structured comparison
 
-Each tool has a Zod schema in `lib/schemas/tools/*.ts`. Tool args parsed via `safeParse` at the call site; malformed tool calls render a small "skipped" badge in place of the widget.
+Each tool has a Zod schema in `lib/schemas/tools/*.ts`. Tool args parsed via `safeParse` at the call site; malformed tool calls render a small "skipped" badge inline in the assistant message.
 
 ### Real Streaming
 
 Replace fake marker streaming with real OpenRouter streaming via `streamOpenRouter` from `@techtalk/shared`:
 
 - `stream: true` in the request.
-- Stream deltas parsed into tool-call fragments in `lib/ai/stream-parser.ts`.
-- Each completed tool-call renders its widget immediately — the grid fills progressively.
+- Stream deltas parsed into prose tokens + tool-call fragments in `lib/ai/stream-parser.ts`.
+- Each completed tool-call renders its widget inline the moment its args finish — widgets appear between prose tokens, not at the end.
 
 ### Mock Data Layer
 
 BE route `app/api/mock-data/[dataset]/route.ts` returns JSON from fixtures under `fixtures/`:
 
 - `fixtures/sales.json`
-- `fixtures/orders.json`
-- `fixtures/users.json`
+- `fixtures/hotels.json`
+- `fixtures/restaurants.json`
 
-System prompt instructs the LLM to reference dataset names rather than hallucinate numbers. The dashboard canvas fetches the dataset server-side when a tool-call references it.
+System prompt instructs the LLM to reference dataset names rather than hallucinate numbers. The chat BE fetches the dataset server-side when a tool-call references it and embeds the result into the tool's args.
+
+### Tech Pattern
+
+Streaming tool calls: LLM emits a mixed stream of prose + tool-call fragments. Each completed tool-call renders its widget immediately in the assistant's message. Conceptually equivalent to Vercel AI SDK's `streamUI`. Multi-turn — the full conversation history is sent on each turn, including submitted form payloads as prior user turns.
 
 ### Metrics
 
-`MetricsPanel` shows latency, tokens, and tool-call count. Inline `useState` in the page component.
+`MetricsPanel` shows time-to-first-token, total latency, tokens, and tool-call count per turn. Inline `useState` in the page component.
 
 ### Acceptance
 
-- Prompt produces a dashboard of 2–5 widgets.
-- Widgets render progressively as tool-calls stream in.
+- Three intents (analytics, nav, input capture) each trigger the correct tool family.
+- Widgets render inline between prose tokens, not deferred to end of message.
+- Form widget submit is round-tripped back as a user turn; conversation continues.
 - Mock data is real fixture data, not hallucinated numbers.
-- Malformed tool args do not crash the page — they show a "skipped" badge.
+- Malformed tool args render a "skipped" badge inline without breaking the turn.
 - MetricsPanel shows first-token and last-token latency.
 
 ---
@@ -366,16 +413,17 @@ apps/
     app/
       page.tsx
       api/
-        compose-ui/route.ts
+        chat/route.ts
         mock-data/[dataset]/route.ts
     components/
-      CommandBar.tsx
-      DashboardCanvas.tsx
+      ChatInput.tsx
+      ChatThread.tsx
       tools/
-        KPICard.tsx
-        LineChart.tsx
-        BarChart.tsx
-        DataTable.tsx
+        Chart.tsx            # show_chart (line | bar)
+        CardList.tsx         # show_card_list
+        InlineForm.tsx       # show_form (reuses FormRenderer)
+        KPICard.tsx          # show_kpi
+        Table.tsx            # show_table
     lib/
       schemas/tools/*.ts
       ai/stream-parser.ts
@@ -422,9 +470,10 @@ packages/
 2. Demo 1 — `/compare` page with Mode 1 (static).
 3. Demo 1 — Mode 2 (SDUI route with simulated delay + cache).
 4. Demo 1 — Mode 3 (GenUI route with `safeParse`, failure-visible UX).
-5. Demo 2 — swap direct fetch calls for `streamOpenRouter` from shared; parse tool args with Zod.
-6. Demo 2 — mock data fixtures + dataset route.
-7. Demo 3 — persona picker + signal bundle + three scenarios with one compose call each.
+5. Demo 2 — reshape tool palette (`show_chart` / `show_card_list` / `show_form` / `show_kpi` / `show_table`) and render widgets inline inside assistant messages.
+6. Demo 2 — swap direct fetch calls for `streamOpenRouter` from shared; parse tool args with Zod.
+7. Demo 2 — mock data fixtures + dataset route.
+8. Demo 3 — persona picker + signal bundle + three scenarios with one compose call each.
 
 Stop at any point the narrative holds — Demo 1 through step 4 is enough to land the thesis.
 

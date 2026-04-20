@@ -1,0 +1,26 @@
+[
+  {
+    "id": "R001",
+    "name": "Bếp Cuốn Đà Nẵng",
+    "cuisine": "Vietnamese",
+    "rating": 4.5,
+    "priceRange": "$$",
+    "description": "Nổi tiếng với các món cuốn và bánh xèo miền Trung."
+  },
+  {
+    "id": "R002",
+    "name": "Pizza 4P's",
+    "cuisine": "Italian/Fusion",
+    "rating": 4.8,
+    "priceRange": "$$$",
+    "description": "Pizza thủ công nướng củi với phô mai burrata."
+  },
+  {
+    "id": "R003",
+    "name": "Mì Quảng Bà Mua",
+    "cuisine": "Local",
+    "rating": 4.2,
+    "priceRange": "$",
+    "description": "Đặc sản mì quảng cá lóc, ếch, tôm thịt."
+  }
+]

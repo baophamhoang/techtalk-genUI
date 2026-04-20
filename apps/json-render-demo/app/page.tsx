@@ -5,14 +5,14 @@ import { STATIC_SCHEMAS, SCHEMA_IDS } from "../src/schemas/static";
 
 const SCHEMA_LABELS: Record<string, string> = {
   healthcare: "🏥 Healthcare",
-  fintech: "💳 Fintech",
+  fintech: "💳 KYC",
   insurance: "🛡️ Insurance",
-  logistics: "🚚 Logistics",
+  logistics: "📦 Logistics",
   ecommerce: "🛒 E-commerce",
-  "real-estate": "🏠 Real Estate",
+  realestate: "🏢 Real Estate",
 };
 
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "idle" | "loading" | "streaming" | "success" | "error";
 
 interface Metrics {
   latencyMs: number;
@@ -56,7 +56,7 @@ function MetricsPanel({ label, latencyMs, tokens, source, determinism }: Metrics
         </div>
         <div className="bg-slate-50 rounded-lg p-3">
           <div className="text-xs text-slate-500 mb-1">Tokens</div>
-          <div className="text-lg font-bold text-slate-800">{tokens.toLocaleString()}</div>
+          <div className="text-lg font-bold text-slate-800">{(tokens ?? 0).toLocaleString()}</div>
         </div>
       </div>
       {determinism !== undefined && (
@@ -81,9 +81,23 @@ function FormRenderer({ schema }: { schema: FormSchema }) {
     setValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(JSON.stringify(values, null, 2));
+    try {
+      const res = await fetch(`/api/submit/${schema.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, _fullSchema: schema })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("✅ Payload Validated (Type-Safe):\n" + JSON.stringify(data.data, null, 2));
+      } else {
+        alert("❌ Validation Failed:\n" + JSON.stringify(data.issues, null, 2));
+      }
+    } catch (err) {
+      alert("Error submitting form.");
+    }
   };
 
   return (
@@ -154,6 +168,7 @@ function FormRenderer({ schema }: { schema: FormSchema }) {
 
 export default function HomePage() {
   const [selectedSchema, setSelectedSchema] = useState("healthcare");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [activeMode, setActiveMode] = useState<"static" | "sdui" | "genui">("genui");
 
   const [staticStatus, setStaticStatus] = useState<Status>("idle");
@@ -185,50 +200,97 @@ export default function HomePage() {
     setGenuiIssues([]);
 
     const schema = STATIC_SCHEMAS[selectedSchema];
-    if (!schema) return;
+    const isGenUI = selectedSchema === "artifact_triage" || selectedSchema === "service_intake";
 
     const t0 = performance.now();
-    setStaticData(schema);
-    setStaticMetrics({ latencyMs: Math.round(performance.now() - t0), tokens: 0, source: "bundle", determinism: 100 });
-    setStaticStatus("success");
+    if (isGenUI) {
+      setStaticStatus("error");
+      setStaticMetrics({ latencyMs: 0, tokens: 0, source: "bundle", determinism: 100 });
+      setStaticData(null);
+    } else if (schema) {
+      setStaticData(schema as FormSchema);
+      setStaticMetrics({ latencyMs: Math.round(performance.now() - t0), tokens: 0, source: "bundle", determinism: 100 });
+      setStaticStatus("success");
+    }
 
-    const cachedKey = `sdui_${selectedSchema}`;
-    const cached = sessionStorage.getItem(cachedKey);
-    if (cached) {
-      const cachedData = JSON.parse(cached);
-      setSduiData(cachedData.schema);
-      setSduiCached(true);
-      setSduiMetrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
-      setSduiStatus("success");
+    if (isGenUI) {
+      setSduiStatus("error");
+      setSduiMetrics({ latencyMs: 0, tokens: 0, source: "fallback" });
+      setSduiData(null);
     } else {
-      try {
-        const res = await fetch(`/api/sdui/forms/${selectedSchema}`);
-        const data = await res.json();
-        setSduiData(data.schema);
-        setSduiCached(data.cached);
-        setSduiMetrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
+      const cachedKey = `sdui_${selectedSchema}`;
+      const cached = sessionStorage.getItem(cachedKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        setSduiData(cachedData.schema);
+        setSduiCached(true);
+        setSduiMetrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
         setSduiStatus("success");
-        sessionStorage.setItem(cachedKey, JSON.stringify(data));
-      } catch {
-        setSduiStatus("error");
-        setSduiMetrics({ latencyMs: 0, tokens: 0, source: "fallback" });
+      } else {
+        try {
+          const res = await fetch(`/api/sdui/forms/${selectedSchema}`);
+          const data = await res.json();
+          setSduiData(data.schema);
+          setSduiCached(data.cached);
+          setSduiMetrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
+          setSduiStatus("success");
+          sessionStorage.setItem(cachedKey, JSON.stringify(data));
+        } catch {
+          setSduiStatus("error");
+          setSduiMetrics({ latencyMs: 0, tokens: 0, source: "fallback" });
+        }
       }
     }
 
     try {
+      const requirement = isGenUI ? customPrompt : `Generate a ${selectedSchema} form`;
+      const bucket = isGenUI ? selectedSchema : "fallback";
+      
       const res = await fetch("/api/genui/form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requirement: `Generate a ${selectedSchema} form` }),
+        body: JSON.stringify({ bucket, description: requirement }),
       });
-      const data = await res.json();
-      setGenuiMetrics({ latencyMs: data.latencyMs, tokens: data.tokens, source: data.ok ? "ai" : "fallback", determinism: data.ok ? 80 : 0 });
-      if (data.ok) {
-        setGenuiData(data.schema);
+      
+      setGenuiStatus("streaming");
+      
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let rawText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        rawText += decoder.decode(value, { stream: true });
+        
+        const stripped = rawText.split("__METADATA__")[0];
+        setGenuiRaw(stripped);
+      }
+      
+      const parts = rawText.split("__METADATA__");
+      const jsonText = parts[0];
+      const metadata = parts[1] ? JSON.parse(parts[1]) : {};
+      
+      const latencyMs = Math.round(performance.now() - t0);
+      setGenuiMetrics({ latencyMs, tokens: metadata.tokens || 0, source: "ai", determinism: 80 });
+
+      let parsedJson: any;
+      try {
+        const start = jsonText.indexOf("{");
+        const end = jsonText.lastIndexOf("}");
+        if (start === -1 || end <= start) throw new Error("No JSON object found");
+        parsedJson = JSON.parse(jsonText.slice(start, end + 1));
+      } catch (err) {
+        setGenuiIssues([{ message: "Could not parse JSON from complete response." }]);
+        setGenuiStatus("error");
+        return;
+      }
+
+      if (parsedJson && parsedJson.fields && Array.isArray(parsedJson.fields)) {
+        setGenuiData(parsedJson as FormSchema);
         setGenuiStatus("success");
       } else {
-        setGenuiRaw(data.raw ?? "");
-        setGenuiIssues(data.issues ?? []);
+        setGenuiIssues([{ message: "Invalid schema structure. Missing 'fields' array." }]);
         setGenuiStatus("error");
       }
     } catch {
@@ -250,6 +312,21 @@ export default function HomePage() {
       return (
         <div className="flex items-center justify-center h-full">
           <div className="w-6 h-6 border-2 border-violet-400 border-top-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+
+    if (status === "streaming" && mode === "genui") {
+      return (
+        <div className="space-y-4 font-mono h-full flex flex-col">
+           <h3 className="text-violet-500 font-bold mb-2 flex items-center gap-2">
+             <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+             AI is streaming JSON structured UI...
+           </h3>
+           <pre className="flex-1 bg-slate-900 border border-slate-700 text-green-400 p-4 rounded-lg text-xs whitespace-pre-wrap overflow-auto">
+             {genuiRaw}
+             <span className="inline-block w-2 h-3 bg-green-400 ml-1 animate-pulse" />
+           </pre>
         </div>
       );
     }
@@ -295,32 +372,113 @@ export default function HomePage() {
       );
     }
 
+    if ((selectedSchema === "artifact_triage" || selectedSchema === "service_intake") && mode !== "genui") {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+          <div className="text-4xl">🚫</div>
+          <p className="text-sm font-medium">Not supported in this mode.</p>
+          <p className="text-xs max-w-xs text-center text-slate-500">
+            Static and SDUI modes require pre-authored schemas. They cannot handle long-tail or dynamic user prompts.
+          </p>
+        </div>
+      );
+    }
+
     return <div className="text-slate-400 text-sm text-center">No data</div>;
   };
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex flex-col gap-6 mb-8 mt-4">
           <div>
-            <h1 className="text-2xl font-black tracking-tight">Demo 1 — Form GenUI</h1>
-            <p className="text-slate-400 mt-1">FE Static · BE SDUI · GenUI comparison</p>
+            <h1 className="text-3xl font-black tracking-tight">Demo 1 — The Spectrum of UI Control</h1>
+            <p className="text-slate-400 mt-1">FE Static Schema · BE SDUI · GenUI</p>
           </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={selectedSchema}
-              onChange={e => setSelectedSchema(e.target.value)}
-              className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white text-sm"
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {SCHEMA_IDS.map(id => (
+              <button 
+                key={id}
+                onClick={async () => {
+                  setSelectedSchema(id);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${
+                  selectedSchema === id 
+                    ? "bg-violet-600 border-violet-500 text-white shadow-[0_0_15px_rgba(124,58,237,0.5)]" 
+                    : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                {SCHEMA_LABELS[id]}
+              </button>
+            ))}
+            
+            <div className="w-[1px] h-8 bg-white/20 mx-2"></div>
+            
+            <button 
+              onClick={() => { setSelectedSchema("artifact_triage"); setCustomPrompt(""); setActiveMode("genui"); }}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border outline-none ${
+                selectedSchema === "artifact_triage" 
+                  ? "bg-amber-500 border-amber-400 text-slate-900 shadow-[0_0_15px_rgba(245,158,11,0.5)]" 
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20"
+              }`}
             >
-              {SCHEMA_IDS.map(id => (
-                <option key={id} value={id} className="bg-slate-900">{SCHEMA_LABELS[id]}</option>
-              ))}
-            </select>
-            <button onClick={runAll} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg transition-colors text-sm">
-              Re-run All
+              🛠️ Dev/Ops Triage
+            </button>
+
+            <button 
+              onClick={() => { setSelectedSchema("service_intake"); setCustomPrompt(""); setActiveMode("genui"); }}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border outline-none ${
+                selectedSchema === "service_intake" 
+                  ? "bg-amber-500 border-amber-400 text-slate-900 shadow-[0_0_15px_rgba(245,158,11,0.5)]" 
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20"
+              }`}
+            >
+              🎧 Consumer Intake
+            </button>
+            
+            <button onClick={runAll} className="ml-auto px-4 py-2 bg-slate-100 hover:bg-white text-slate-900 font-black rounded-lg transition-colors text-sm flex items-center gap-2">
+              <span className="text-xl leading-none">▶</span> Chạy Demo
             </button>
           </div>
         </header>
+
+        {(selectedSchema === "artifact_triage" || selectedSchema === "service_intake") && (
+          <div className="mb-6 flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2 mb-2">
+              <span className="text-xs text-slate-400 font-medium py-1">Gợi ý:</span>
+              {selectedSchema === "artifact_triage" ? (
+                <>
+                  <button onClick={() => setCustomPrompt("Error: ENOSPC: no space left on device, write")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">🔥 ENOSPC Error</button>
+                  <button onClick={() => setCustomPrompt("Pod CrashLoopBackOff: OOMKilled")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">🚨 OOMKilled</button>
+                  <button onClick={() => setCustomPrompt("Database connection timeout after 3000ms")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">⌛ DB Timeout</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setCustomPrompt("I bumped my car into a tree while parking. The front left bumper is dented.")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">🚗 Car Bumper Dent</button>
+                  <button onClick={() => setCustomPrompt("My flight was cancelled and I need to rebook or get a refund.")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">✈️ Cancelled Flight</button>
+                  <button onClick={() => setCustomPrompt("I received the wrong item in my recent order. I ordered a blue shirt but got a red one.")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">📦 Wrong Item</button>
+                </>
+              )}
+            </div>
+            <label className="text-sm font-bold text-amber-400">
+              {selectedSchema === "artifact_triage" ? "Mô tả sự cố (Artifact Triage) - Dán stack trace hoặc config vào đây:" : "Mô tả yêu cầu dịch vụ (Consumer Intake) - Viết vấn đề bạn gặp phải:"}
+            </label>
+            <textarea
+              rows={3}
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder={selectedSchema === "artifact_triage" ? "e.g., Error: ENOSPC: no space left on device, write..." : "e.g., I bumped my car into a tree while parking. The front left bumper is dented."}
+              className="w-full bg-slate-900/50 border border-amber-500/30 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  runAll();
+                }
+              }}
+            />
+          </div>
+        )}
 
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 text-sm">
           <span className="text-amber-400">⚠️ Mock context</span>
@@ -329,8 +487,8 @@ export default function HomePage() {
 
         <div className="flex gap-2 mb-6">
           {[
-            { key: "static", label: "1️⃣ FE Static", desc: "Schema in bundle" },
-            { key: "sdui", label: "2️⃣ BE SDUI", desc: "Schema from API" },
+            { key: "static", label: "1️⃣ FE Static Schema", desc: "Schema in bundle" },
+            { key: "sdui", label: "2️⃣ BE-Driven Schema (SDUI)", desc: "From CMS/DB" },
             { key: "genui", label: "3️⃣ GenUI", desc: "AI composes" },
           ].map(tab => (
             <button
@@ -376,7 +534,19 @@ export default function HomePage() {
                     <p>✅ <strong>Latency:</strong> ~200-400ms (network + server)</p>
                     <p>✅ <strong>Determinism:</strong> 100% (admin controls schema)</p>
                     <p>✅ <strong>Cost:</strong> Low (simple API call)</p>
-                    <p className="mt-3 text-slate-400">Best for: When business users need to edit schemas without deploying code.</p>
+                    
+                    <div className="mt-4 p-4 border border-violet-200 bg-violet-50 rounded-xl">
+                      <div className="flex justify-between items-center mb-2">
+                         <span className="text-xs font-bold text-violet-700 uppercase">Mock Admin Portal</span>
+                         <span className="text-[10px] bg-violet-200 text-violet-800 px-2 py-0.5 rounded">Admin Only</span>
+                      </div>
+                      <p className="text-xs text-slate-600 mb-2">If you were a business admin, you could edit the schema JSON here and it would instantly update the form without needing to deploy the frontend.</p>
+                      <pre className="text-[10px] bg-slate-900 text-green-400 p-2 rounded overflow-hidden h-[80px]">
+                        {sduiData ? JSON.stringify(sduiData, null, 2).slice(0, 200) + "\n..." : "Loading..."}
+                      </pre>
+                    </div>
+
+                    <p className="mt-3 text-slate-400">Best for: When business users need to flexibly edit schemas without deploying code.</p>
                   </>
                 )}
                 {activeMode === "genui" && (
@@ -385,7 +555,7 @@ export default function HomePage() {
                     <p>⏳ <strong>Latency:</strong> ~3-8s (AI processing)</p>
                     <p>⏳ <strong>Determinism:</strong> ~80% (AI may output invalid)</p>
                     <p>⏳ <strong>Cost:</strong> ~$0.001 per request</p>
-                    <p className="mt-3 text-slate-400">Best for: Edge cases — free-text → form, very long tail forms.</p>
+                    <p className="mt-3 text-slate-400">Best for: The critical 10% long tail — dynamic intake built around unstructured user context.</p>
                   </>
                 )}
               </div>

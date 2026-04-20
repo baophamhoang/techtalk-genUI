@@ -1,23 +1,31 @@
 import { z } from "zod";
 
-export type Field =
-  | { type: "text"; label: string; required?: boolean; pattern?: string; minLength?: number; maxLength?: number; placeholder?: string }
-  | { type: "email"; label: string; required?: boolean; placeholder?: string }
-  | { type: "number"; label: string; required?: boolean; min?: number; max?: number; step?: number }
-  | { type: "date"; label: string; required?: boolean; min?: string; max?: string }
-  | { type: "select"; label: string; required?: boolean; options: { value: string; label: string }[]; multi?: boolean }
-  | { type: "textarea"; label: string; required?: boolean; rows?: number; maxLength?: number }
-  | { type: "phone"; label: string; required?: boolean; country?: string }
-  | { type: "checkbox"; label: string; required?: boolean }
-  | { type: "radio"; label: string; required?: boolean; options: { value: string; label: string }[] }
-  | { type: "file"; label: string; required?: boolean; accept?: string; maxSize?: number };
+const BaseField = z.object({
+  label: z.string(),
+  required: z.boolean().optional(),
+});
+
+export const FieldSchema = z.discriminatedUnion("type", [
+  BaseField.extend({ type: z.literal("text"), pattern: z.string().optional(), minLength: z.number().optional(), maxLength: z.number().optional(), placeholder: z.string().optional() }),
+  BaseField.extend({ type: z.literal("email"), placeholder: z.string().optional() }),
+  BaseField.extend({ type: z.literal("number"), min: z.number().optional(), max: z.number().optional(), step: z.number().optional() }),
+  BaseField.extend({ type: z.literal("date"), min: z.string().optional(), max: z.string().optional() }),
+  BaseField.extend({ type: z.literal("select"), options: z.array(z.object({ value: z.string(), label: z.string() })), multi: z.boolean().optional() }),
+  BaseField.extend({ type: z.literal("textarea"), rows: z.number().optional(), maxLength: z.number().optional() }),
+  BaseField.extend({ type: z.literal("phone"), country: z.string().optional() }),
+  BaseField.extend({ type: z.literal("checkbox") }),
+  BaseField.extend({ type: z.literal("radio"), options: z.array(z.object({ value: z.string(), label: z.string() })) }),
+  BaseField.extend({ type: z.literal("file"), accept: z.string().optional(), maxSize: z.number().optional() }),
+]);
+
+export type Field = z.infer<typeof FieldSchema>;
 
 export const FormSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().optional(),
   submitLabel: z.string().default("Submit"),
-  fields: z.array(z.object({ key: z.string(), field: Field })),
+  fields: z.array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9]*$/), field: FieldSchema })),
 });
 
 export type FormSchemaType = z.infer<typeof FormSchema>;

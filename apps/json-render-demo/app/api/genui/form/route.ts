@@ -1,13 +1,5 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-
-const FormSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().optional(),
-  submitLabel: z.string().default("Submit"),
-  fields: z.array(z.object({ key: z.string(), field: z.any() })),
-});
+import { FormSchema } from "@techtalk/shared";
 
 function extractJson(raw: string): { ok: true; data: unknown } | { ok: false; raw: string } {
   const start = raw.indexOf("{");
@@ -20,38 +12,36 @@ function extractJson(raw: string): { ok: true; data: unknown } | { ok: false; ra
   }
 }
 
-const SYSTEM_PROMPT = `You are a UI architect for Vietnamese business forms.
-Generate a JSON form schema based on the user's requirement.
-Always respond with ONLY valid JSON matching this structure:
-{
-  "id": "unique-form-id",
-  "title": "Form Title in Vietnamese",
-  "description": "Optional description",
-  "submitLabel": "Submit button label",
-  "fields": [
-    { "key": "fieldKey", "field": { "type": "text|email|number|date|select|textarea|phone|checkbox|radio|file", "label": "Label in Vietnamese", "required": boolean, ...other field-specific options } }
-  ]
-}
-Rules: Vietnamese labels, 4-8 fields, appropriate field types for the use case.`;
+import { GENUI_BUCKETS } from "../../../../src/scenarios/genui";
 
 interface RequestBody {
-  industry?: string;
-  workflow?: string;
-  requirement?: string;
+  bucket?: "artifact_triage" | "service_intake" | "fallback";
+  description?: string;
 }
 
 export async function POST(req: Request) {
   const start = Date.now();
-  const { industry, workflow, requirement } = await req.json() as RequestBody;
+  const { bucket, description } = await req.json() as RequestBody;
 
-  let prompt = "";
-  if (requirement) {
-    prompt = `Generate a form for: ${requirement}`;
-  } else if (industry && workflow) {
-    prompt = `Generate a form schema for ${industry} industry, workflow: ${workflow}`;
-  } else {
-    return NextResponse.json({ ok: false, error: "Missing requirement or industry+workflow" }, { status: 400 });
+  let systemPrompt = "";
+  if (bucket && bucket === "fallback" && description) {
+    systemPrompt = `You are a helpful UI generator. The user will ask for a form.
+You MUST return ONLY a valid JSON object matching the FormSchema requirements.
+Include an 'id', 'title', 'description', 'submitLabel', and a 'fields' array.
+Each field must have 'key' and 'field' (with 'type', 'label', and optional 'required').
+If field type is 'select' or 'radio', you MUST include an 'options' array where each item has 'label' and 'value'.
+Allowed field types: text, email, number, date, select, textarea, phone, checkbox, radio, file.
+No markdown, no prose.`;
+  } else if (bucket && GENUI_BUCKETS[bucket as keyof typeof GENUI_BUCKETS]) {
+    systemPrompt = GENUI_BUCKETS[bucket as keyof typeof GENUI_BUCKETS].systemPrompt;
   }
+
+  if (!systemPrompt || !description) {
+    return NextResponse.json({ ok: false, error: "Missing valid bucket or description" }, { status: 400 });
+  }
+
+  let totalTokens = 0;
+  let rawResponse = "";
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -63,54 +53,70 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model: "minimax/minimax-m2.7",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: description },
         ],
-        stream: false,
+        stream: true,
       }),
     });
 
-    const data = await res.json() as any;
-    const raw = data.choices?.[0]?.message?.content ?? "";
-    const latencyMs = Date.now() - start;
-    const tokens = data.usage?.total_tokens ?? 0;
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
 
-    const extracted = extractJson(typeof raw === "string" ? raw : "");
-    if (!extracted.ok) {
-      return NextResponse.json({
-        ok: false,
-        raw,
-        issues: [{ message: "Could not parse JSON from response" }],
-        latencyMs,
-        tokens,
-      });
-    }
+    (async () => {
+      try {
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-    const result = FormSchema.safeParse(extracted.data);
-    if (!result.success) {
-      return NextResponse.json({
-        ok: false,
-        raw: JSON.stringify(extracted.data, null, 2),
-        issues: result.error.issues.map(i => ({ path: i.path, message: i.message })),
-        latencyMs,
-        tokens,
-      });
-    }
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-    return NextResponse.json({
-      ok: true,
-      schema: result.data,
-      latencyMs,
-      tokens,
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6).trim();
+            if (raw === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(raw);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) {
+                rawResponse += delta;
+                await writer.write(encoder.encode(delta));
+              }
+              if (parsed.usage?.total_tokens) {
+                totalTokens = parsed.usage.total_tokens;
+              }
+            } catch {}
+          }
+        }
+        
+        const metadata = JSON.stringify({ tokens: totalTokens });
+        await writer.write(encoder.encode(`\n__METADATA__${metadata}`));
+      } catch (err) {
+        console.error("Stream error:", err);
+      } finally {
+        await writer.close();
+      }
+    })();
+
+    return new Response(readable, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+
   } catch (err) {
     console.error("genui/form error:", err);
     return NextResponse.json({
       ok: false,
-      raw: "",
-      issues: [{ message: `Server error: ${err}` }],
+      raw: rawResponse,
+      issues: [{ message: "Network or Server error calling" }],
       latencyMs: Date.now() - start,
-      tokens: 0,
+      tokens: totalTokens,
     });
   }
 }

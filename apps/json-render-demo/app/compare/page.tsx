@@ -5,12 +5,10 @@ import { useRouter } from "next/navigation";
 import { STATIC_SCHEMAS, SCHEMA_IDS } from "../../src/schemas/static";
 
 const SCHEMA_LABELS: Record<string, string> = {
-  healthcare: "🏥 Healthcare Booking",
-  fintech: "💳 Fintech KYC",
+  fintech: "💳 KYC Onboarding",
   insurance: "🛡️ Insurance Claim",
-  logistics: "🚚 Logistics Tracking",
-  ecommerce: "🛒 E-commerce Onboarding",
-  "real-estate": "🏠 Real Estate Inspection",
+  support: "🎧 Customer Support",
+  incident: "🚨 Incident Response",
 };
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -82,9 +80,23 @@ function FormRenderer({ schema }: { schema: FormSchema }) {
     setValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(JSON.stringify(values, null, 2));
+    try {
+      const res = await fetch(`/api/submit/${schema.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, _fullSchema: schema })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("✅ Payload Validated (Type-Safe):\n" + JSON.stringify(data.data, null, 2));
+      } else {
+        alert("❌ Validation Failed:\n" + JSON.stringify(data.issues, null, 2));
+      }
+    } catch (err) {
+      alert("Error submitting form.");
+    }
   };
 
   return (
@@ -155,7 +167,8 @@ function FormRenderer({ schema }: { schema: FormSchema }) {
 
 export default function ComparePage() {
   const router = useRouter();
-  const [selectedSchema, setSelectedSchema] = useState("healthcare");
+  const [selectedSchema, setSelectedSchema] = useState("fintech");
+  const [customPrompt, setCustomPrompt] = useState("I bumped my car into a tree while parking, the front left bumper is dented.");
 
   const [m1Status, setM1Status] = useState<Status>("idle");
   const [m1Metrics, setM1Metrics] = useState<Metrics | null>(null);
@@ -186,41 +199,51 @@ export default function ComparePage() {
     setM3Issues([]);
 
     const schema = STATIC_SCHEMAS[selectedSchema];
-    if (!schema) return;
 
     const t0 = performance.now();
-    setM1Data(schema as FormSchema);
-    setM1Metrics({ latencyMs: Math.round(performance.now() - t0), tokens: 0, source: "bundle", determinism: 100 });
-    setM1Status("success");
+    if (selectedSchema === "custom") {
+      setM1Status("error");
+      setM1Metrics({ latencyMs: 0, tokens: 0, source: "bundle", determinism: 100 });
+    } else if (schema) {
+      setM1Data(schema as FormSchema);
+      setM1Metrics({ latencyMs: Math.round(performance.now() - t0), tokens: 0, source: "bundle", determinism: 100 });
+      setM1Status("success");
+    }
 
-    const cachedKey = `sdui_${selectedSchema}`;
-    const cached = sessionStorage.getItem(cachedKey);
-    if (cached) {
-      const cachedData = JSON.parse(cached);
-      setM2Data(cachedData.schema);
-      setM2Cached(true);
-      setM2Metrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
-      setM2Status("success");
+    if (selectedSchema === "custom") {
+      setM2Status("error");
+      setM2Metrics({ latencyMs: 0, tokens: 0, source: "fallback" });
     } else {
-      try {
-        const res = await fetch(`/api/sdui/forms/${selectedSchema}`);
-        const data = await res.json();
-        setM2Data(data.schema);
-        setM2Cached(data.cached);
-        setM2Metrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
+      const cachedKey = `sdui_${selectedSchema}`;
+      const cached = sessionStorage.getItem(cachedKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        setM2Data(cachedData.schema);
+        setM2Cached(true);
+        setM2Metrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
         setM2Status("success");
-        sessionStorage.setItem(cachedKey, JSON.stringify(data));
-      } catch {
-        setM2Status("error");
-        setM2Metrics({ latencyMs: 0, tokens: 0, source: "fallback" });
+      } else {
+        try {
+          const res = await fetch(`/api/sdui/forms/${selectedSchema}`);
+          const data = await res.json();
+          setM2Data(data.schema);
+          setM2Cached(data.cached);
+          setM2Metrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
+          setM2Status("success");
+          sessionStorage.setItem(cachedKey, JSON.stringify(data));
+        } catch {
+          setM2Status("error");
+          setM2Metrics({ latencyMs: 0, tokens: 0, source: "fallback" });
+        }
       }
     }
 
     try {
+      const requirement = selectedSchema === "custom" ? customPrompt : `Generate a ${selectedSchema} form`;
       const res = await fetch("/api/genui/form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requirement: `Generate a ${selectedSchema} form` }),
+        body: JSON.stringify({ requirement }),
       });
       const data = await res.json();
       setM3Metrics({ latencyMs: data.latencyMs, tokens: data.tokens, source: data.ok ? "ai" : "fallback", determinism: data.ok ? 80 : 0 });
@@ -245,27 +268,67 @@ export default function ComparePage() {
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <button onClick={() => router.push("/")} className="text-slate-400 hover:text-white text-sm mb-2">← Back to Demo 1</button>
-            <h1 className="text-2xl font-black tracking-tight">Form Mode Comparison</h1>
-            <p className="text-slate-400 mt-1">Compare FE Static · BE SDUI · GenUI side by side</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={selectedSchema}
-              onChange={e => setSelectedSchema(e.target.value)}
-              className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white text-sm"
-            >
-              {SCHEMA_IDS.map(id => (
-                <option key={id} value={id} className="bg-slate-900">{SCHEMA_LABELS[id]}</option>
-              ))}
-            </select>
-            <button onClick={runAll} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg transition-colors text-sm">
-              Re-run All
-            </button>
-          </div>
-        </header>
+        <header className="flex flex-col gap-6 mb-8 mt-4">
+           <div>
+             <button onClick={() => router.push("/")} className="text-slate-400 hover:text-white text-sm mb-2">← Back to Demo 1</button>
+             <h1 className="text-3xl font-black tracking-tight">Form Mode Comparison</h1>
+             <p className="text-slate-400 mt-1">Compare FE Static Schema · BE-Driven Schema (SDUI) · GenUI side by side</p>
+           </div>
+           
+           <div className="flex flex-wrap items-center gap-2">
+             {SCHEMA_IDS.map(id => (
+               <button 
+                 key={id}
+                 onClick={async () => {
+                   setSelectedSchema(id);
+                 }}
+                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${
+                   selectedSchema === id 
+                     ? "bg-violet-600 border-violet-500 text-white shadow-[0_0_15px_rgba(124,58,237,0.5)]" 
+                     : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                 }`}
+               >
+                 {SCHEMA_LABELS[id]}
+               </button>
+             ))}
+             
+             <div className="w-[1px] h-8 bg-white/20 mx-2"></div>
+             
+             <button 
+               onClick={() => setSelectedSchema("custom")}
+               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${
+                 selectedSchema === "custom" 
+                   ? "bg-amber-500 border-amber-400 text-slate-900 shadow-[0_0_15px_rgba(245,158,11,0.5)]" 
+                   : "bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20"
+               }`}
+             >
+               ✨ Dynamic Incident Intake
+             </button>
+             
+             <button onClick={runAll} className="ml-auto px-4 py-2 bg-slate-100 hover:bg-white text-slate-900 font-black rounded-lg transition-colors text-sm flex items-center gap-2">
+               <span className="text-xl leading-none">▶</span> Chạy Demo
+             </button>
+           </div>
+         </header>
+ 
+         {selectedSchema === "custom" && (
+           <div className="mb-6 flex flex-col gap-2">
+             <label className="text-sm font-bold text-amber-400">Context: What happened?</label>
+             <textarea
+               rows={3}
+               value={customPrompt}
+               onChange={(e) => setCustomPrompt(e.target.value)}
+               placeholder="e.g., I bumped my car into a tree while parking. The front left bumper is dented."
+               className="w-full bg-slate-900/50 border border-amber-500/30 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium"
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter' && !e.shiftKey) {
+                   e.preventDefault();
+                   runAll();
+                 }
+               }}
+             />
+           </div>
+         )}
 
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 text-sm">
           <span className="text-amber-400">⚠️ Mock context</span>
@@ -278,7 +341,7 @@ export default function ComparePage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center font-bold text-lg">1</div>
               <div>
-                <h2 className="font-bold text-slate-200">FE Static</h2>
+                <h2 className="font-bold text-slate-200">FE Static Schema</h2>
                 <p className="text-xs text-slate-500">Schema in client bundle</p>
               </div>
             </div>
@@ -289,6 +352,14 @@ export default function ComparePage() {
                 </div>
               ) : m1Data ? (
                 <FormRenderer schema={m1Data} />
+              ) : selectedSchema === "custom" ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+                  <div className="text-4xl">🚫</div>
+                  <p className="text-sm font-medium">Not supported in this mode.</p>
+                  <p className="text-xs max-w-[200px] text-center text-slate-500">
+                    Static mode requires pre-authored schemas.
+                  </p>
+                </div>
               ) : (
                 <div className="text-slate-400 text-sm text-center">No data</div>
               )}
@@ -301,10 +372,22 @@ export default function ComparePage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-lg">2</div>
               <div>
-                <h2 className="font-bold text-blue-300">BE SDUI</h2>
-                <p className="text-xs text-slate-500">Schema from server with admin control</p>
+                <h2 className="font-bold text-blue-300">BE-Driven Schema (SDUI)</h2>
+                <p className="text-xs text-slate-500">Schema from CMS/DB with admin control</p>
               </div>
             </div>
+            
+            <div className="mb-4 p-4 border border-blue-800 bg-blue-900/30 rounded-xl">
+               <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-blue-400 uppercase">Mock Admin Portal</span>
+                 <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold">Admin Only</span>
+               </div>
+               <p className="text-xs text-slate-400 mb-2">If you were a business admin, you could edit the schema JSON here and it would instantly update the form without needing to deploy the frontend.</p>
+               <pre className="text-[10px] bg-slate-900 text-green-400 p-2 rounded overflow-hidden h-[80px]">
+                 {m2Data ? JSON.stringify(m2Data, null, 2).slice(0, 200) + "\n..." : "Loading..."}
+               </pre>
+            </div>
+
             <div className="bg-white rounded-2xl p-5 min-h-[400px]">
               {m2Status === "loading" ? (
                 <div className="flex items-center justify-center h-full">
@@ -319,6 +402,14 @@ export default function ComparePage() {
                     </div>
                   )}
                 </>
+              ) : selectedSchema === "custom" ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+                  <div className="text-4xl">🚫</div>
+                  <p className="text-sm font-medium">Not supported in this mode.</p>
+                  <p className="text-xs max-w-[200px] text-center text-slate-500">
+                    SDUI mode requires pre-authored schemas from server.
+                  </p>
+                </div>
               ) : (
                 <div className="text-slate-400 text-sm text-center">No data</div>
               )}

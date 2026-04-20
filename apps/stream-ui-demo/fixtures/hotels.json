@@ -1,0 +1,29 @@
+[
+  {
+    "id": "H001",
+    "name": "Novotel Danang Premier Han River",
+    "stars": 5,
+    "pricePerNight": 2500000,
+    "rating": 4.6,
+    "address": "36 Bạch Đằng, Đà Nẵng",
+    "description": "View sông Hàn tuyệt đẹp, cách cầu Rồng 5 phút."
+  },
+  {
+    "id": "H002",
+    "name": "Sala Danang Beach Hotel",
+    "stars": 4,
+    "pricePerNight": 1200000,
+    "rating": 4.5,
+    "address": "36 Lâm Hoành, Biển Mỹ Khê",
+    "description": "Hồ bơi vô cực trên tầng thượng, gần biển."
+  },
+  {
+    "id": "H003",
+    "name": "Hyatt Regency Danang",
+    "stars": 5,
+    "pricePerNight": 4500000,
+    "rating": 4.8,
+    "address": "5 Trường Sa, Ngũ Hành Sơn",
+    "description": "Resort sang trọng, có bãi biển riêng và spa."
+  }
+]
