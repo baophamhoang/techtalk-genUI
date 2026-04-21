@@ -52,3 +52,7 @@ export const tableSchema = z.object({
   columns: z.array(z.string()),
   rows: z.array(z.record(z.union([z.string(), z.number()])))
 });
+
+export const suggestionsSchema = z.object({
+  suggestions: z.array(z.string()).min(1).max(4),
+});

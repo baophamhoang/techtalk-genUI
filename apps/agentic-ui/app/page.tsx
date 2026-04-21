@@ -17,17 +17,12 @@ interface ToolCall {
   args: Record<string, unknown>;
 }
 
-interface ComposeResponse {
-  bundle: SignalBundle;
-  ok: boolean;
-  tools: ToolCall[];
-  raw?: string;
-  issues?: unknown[];
+interface Metrics {
   latencyMs: number;
   tokens: number;
 }
 
-function MetricsPanel({ label, latencyMs, tokens, source, determinism }: { label: string; latencyMs: number; tokens: number; source: string; determinism?: number }) {
+function MetricsPanel({ label, latencyMs, tokens, source, determinism }: { label: string; latencyMs: number; tokens: number; source: string; determinism?: number; }) {
   const sourceColors: Record<string, string> = {
     ai: "bg-emerald-100 text-emerald-700",
     fallback: "bg-amber-100 text-amber-700",
@@ -194,11 +189,11 @@ function HomeSurface({ tools }: { tools: ToolCall[] }) {
   );
 }
 
-function PipelineLog({ bundle, result }: { bundle: SignalBundle; result: ComposeResponse }) {
+function PipelineLog({ bundle, tools, metrics }: { bundle: SignalBundle; tools: ToolCall[]; metrics: Metrics | null }) {
   return (
     <div className="bg-slate-900 rounded-xl p-4 text-xs font-mono overflow-auto h-full">
       <div className="text-emerald-400 font-bold mb-3">📋 Pipeline Log</div>
-      
+
       <div className="mb-4">
         <div className="text-slate-400 mb-1">SIGNAL BUNDLE</div>
         <pre className="text-slate-300 whitespace-pre-wrap">
@@ -214,11 +209,11 @@ function PipelineLog({ bundle, result }: { bundle: SignalBundle; result: Compose
         </pre>
       </div>
 
-      {result.ok ? (
+      {tools.length > 0 ? (
         <div>
           <div className="text-slate-400 mb-1">TOOL CALLS</div>
           <div className="space-y-2">
-            {result.tools.map((tc, i) => (
+            {tools.map((tc, i) => (
               <div key={i} className="bg-slate-800 rounded p-2">
                 <div className="text-violet-400">{tc.name}</div>
                 <pre className="text-slate-400 mt-1 whitespace-pre-wrap">
@@ -229,22 +224,16 @@ function PipelineLog({ bundle, result }: { bundle: SignalBundle; result: Compose
           </div>
         </div>
       ) : (
-        <div className="bg-red-900/30 border border-red-700/50 rounded p-3">
-          <div className="text-red-400 font-bold">❌ VALIDATION FAILED</div>
-          <div className="text-red-300 mt-1">Fallback to baseline</div>
-          {result.issues && (
-            <pre className="text-red-400 mt-2 whitespace-pre-wrap">
-              {JSON.stringify(result.issues, null, 2)}
-            </pre>
-          )}
-        </div>
+        <div className="text-slate-500 italic">Waiting for tool calls…</div>
       )}
 
-      <div className="mt-4 pt-3 border-t border-slate-700">
-        <div className="text-slate-500">
-          Latency: {result.latencyMs}ms · Tokens: {result.tokens}
+      {metrics && (
+        <div className="mt-4 pt-3 border-t border-slate-700">
+          <div className="text-slate-500">
+            Latency: {metrics.latencyMs}ms · Tokens: {metrics.tokens}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -252,14 +241,18 @@ function PipelineLog({ bundle, result }: { bundle: SignalBundle; result: Compose
 export default function Home() {
   const [selectedPersona, setSelectedPersona] = useState("minh");
   const [selectedScenario, setSelectedScenario] = useState("baseline");
-  const [result, setResult] = useState<ComposeResponse | null>(null);
+  const [tools, setTools] = useState<ToolCall[]>([]);
+  const [bundle, setBundle] = useState<SignalBundle | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasRun, setHasRun] = useState(false);
 
   const handleRun = async () => {
     setIsLoading(true);
     setHasRun(true);
-    setResult(null);
+    setTools([]);
+    setBundle(null);
+    setMetrics(null);
 
     try {
       const res = await fetch("/api/compose", {
@@ -267,8 +260,33 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ personaId: selectedPersona, scenario: selectedScenario }),
       });
-      const data = await res.json();
-      setResult(data);
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let leftover = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = leftover + decoder.decode(value, { stream: true });
+        const lines = text.split("\n");
+        leftover = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === "bundle") setBundle(event.bundle);
+            if (event.type === "tool") setTools(prev => [...prev, { name: event.name, args: event.args }]);
+            if (event.type === "done") {
+              setMetrics({ latencyMs: event.latencyMs, tokens: event.tokens });
+              setIsLoading(false);
+            }
+            if (event.type === "error") setIsLoading(false);
+          } catch { /* skip malformed SSE */ }
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -360,13 +378,13 @@ export default function Home() {
           </button>
 
           {/* Metrics */}
-          {result && (
+          {metrics && (
             <MetricsPanel
               label="Demo 3"
-              latencyMs={result.latencyMs}
-              tokens={result.tokens}
-              source={result.ok ? "ai" : "fallback"}
-              determinism={result.ok ? 80 : 0}
+              latencyMs={metrics.latencyMs}
+              tokens={metrics.tokens}
+              source={tools.length > 0 ? "ai" : "fallback"}
+              determinism={tools.length > 0 ? 80 : 0}
             />
           )}
         </div>
@@ -382,12 +400,17 @@ export default function Home() {
           {/* Home surface */}
           <div className="bg-white rounded-xl border border-slate-200 p-5 min-h-[400px] shadow-sm">
             <h2 className="text-sm font-bold text-slate-600 mb-4">🏠 Home Surface</h2>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="w-8 h-8 border-3 border-emerald-500 border-top-transparent rounded-full animate-spin" />
+            {tools.length > 0 ? (
+              <HomeSurface tools={tools} />
+            ) : isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 gap-3">
+                <div className="flex gap-1.5">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <p className="text-xs text-slate-400">Composing UI…</p>
               </div>
-            ) : result ? (
-              <HomeSurface tools={result.tools} />
             ) : (
               <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
                 Run a scenario to see the adaptive UI
@@ -396,9 +419,9 @@ export default function Home() {
           </div>
 
           {/* Pipeline log */}
-          {result && hasRun && (
+          {bundle && hasRun && (
             <div className="min-h-[300px]">
-              <PipelineLog bundle={result.bundle} result={result} />
+              <PipelineLog bundle={bundle} tools={tools} metrics={metrics} />
             </div>
           )}
         </div>
