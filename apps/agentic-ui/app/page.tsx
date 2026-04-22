@@ -282,12 +282,8 @@ export default function Home() {
             const event = JSON.parse(line.slice(6));
             console.log('event :>> ', event);
             if (event.type === "bundle") setBundle(event.bundle);
-            if (event.type === "tool") {
-              if (event.args.reasoning) {
-                setReasoning(prev => prev || (event.args.reasoning as string));
-              }
-              setTools(prev => [...prev, { name: event.name, args: event.args }]);
-            }
+            if (event.type === "text") setReasoning(prev => prev + event.delta);
+            if (event.type === "tool") setTools(prev => [...prev, { name: event.name, args: event.args }]);
             if (event.type === "done") {
               setMetrics({ latencyMs: event.latencyMs, tokens: event.tokens });
               setIsLoading(false);

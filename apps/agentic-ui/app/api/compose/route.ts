@@ -8,13 +8,6 @@ const SCENARIO_INSTRUCTIONS: Record<string, string> = {
   searchAbandon: "User searched for food multiple times but didn't order. Show a mood picker to help them decide.",
 };
 
-const REASONING_FIELD = {
-  reasoning: {
-    type: 'string',
-    description: '1-2 Vietnamese sentences explaining which signals (persona name, time, weather, search history) triggered this specific layout choice.',
-  },
-};
-
 const COMPOSE_TOOLS = [
   {
     type: 'function',
@@ -24,7 +17,6 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          ...REASONING_FIELD,
           hero: {
             type: 'object',
             properties: {
@@ -67,7 +59,6 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          ...REASONING_FIELD,
           prompt: { type: 'string' },
           moods: {
             type: 'array',
@@ -102,7 +93,6 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          ...REASONING_FIELD,
           tone: { type: 'string', enum: ['info', 'warning', 'success'] },
           title: { type: 'string' },
           message: { type: 'string' },
@@ -118,7 +108,6 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          ...REASONING_FIELD,
           title: { type: 'string' },
           tag: { type: 'string' },
           items: {
@@ -163,9 +152,8 @@ Weather: ${bundle.weather.temp}°C, ${bundle.weather.condition}
 Location: ${bundle.location}
 Recent orders: ${bundle.behavior.recentOrders}
 Session minutes: ${bundle.behavior.sessionMinutes}
-Search history: ${bundle.behavior.searchHistory.join(', ')}
 
-Compose the home page UI. Use the reasoning field in each tool to explain why you chose that component for this user.`;
+First write exactly 1-2 short Vietnamese sentences explaining which signals you noticed and why you're choosing this specific layout. Be specific (mention persona name, weather, time, or behavior). Then immediately call the appropriate tools to compose the UI. Use restructureHome for weather/event layout changes, showMoodPicker when user needs help deciding, showContextBanner for alerts, showCuratedRow for food rows.`;
 
   const encoder = new TextEncoder();
 
@@ -185,9 +173,9 @@ Compose the home page UI. Use the reasoning field in each tool to explain why yo
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'openai/gpt-4o-mini',
+            model: 'anthropic/claude-3-5-haiku',
             messages: [
-              { role: 'system', content: 'You are a food delivery UI composer. Call the appropriate UI tools to compose the home page. Each tool has a `reasoning` field — fill it with 1-2 Vietnamese sentences explaining which signals (persona name, time, weather, search history) drove this layout choice.' },
+              { role: 'system', content: 'You are a food delivery UI composer. Call tools to compose the home page UI.' },
               { role: 'user', content: prompt },
             ],
             tools: COMPOSE_TOOLS,
@@ -209,9 +197,11 @@ Compose the home page UI. Use the reasoning field in each tool to explain why yo
           const buf = buffers.get(idx);
           if (!buf || !buf.name) return;
           try {
-            const parsed = JSON.parse(buf.argsStr);
-            if (primitives[buf.name as keyof typeof primitives]) {
-              emit({ type: 'tool', name: buf.name, args: parsed });
+            const raw = JSON.parse(buf.argsStr);
+            const schema = primitives[buf.name as keyof typeof primitives];
+            if (schema) {
+              const parsed = schema.safeParse(raw);
+              emit({ type: 'tool', name: buf.name, args: parsed.success ? parsed.data : raw });
             }
           } catch { /* skip malformed */ }
         };
