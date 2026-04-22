@@ -8,6 +8,13 @@ const SCENARIO_INSTRUCTIONS: Record<string, string> = {
   searchAbandon: "User searched for food multiple times but didn't order. Show a mood picker to help them decide.",
 };
 
+const REASONING_FIELD = {
+  reasoning: {
+    type: 'string',
+    description: '1-2 Vietnamese sentences explaining which signals (persona name, time, weather, search history) triggered this specific layout choice.',
+  },
+};
+
 const COMPOSE_TOOLS = [
   {
     type: 'function',
@@ -17,6 +24,7 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
+          ...REASONING_FIELD,
           hero: {
             type: 'object',
             properties: {
@@ -59,6 +67,7 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
+          ...REASONING_FIELD,
           prompt: { type: 'string' },
           moods: {
             type: 'array',
@@ -93,6 +102,7 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
+          ...REASONING_FIELD,
           tone: { type: 'string', enum: ['info', 'warning', 'success'] },
           title: { type: 'string' },
           message: { type: 'string' },
@@ -108,6 +118,7 @@ const COMPOSE_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
+          ...REASONING_FIELD,
           title: { type: 'string' },
           tag: { type: 'string' },
           items: {
@@ -152,8 +163,9 @@ Weather: ${bundle.weather.temp}°C, ${bundle.weather.condition}
 Location: ${bundle.location}
 Recent orders: ${bundle.behavior.recentOrders}
 Session minutes: ${bundle.behavior.sessionMinutes}
+Search history: ${bundle.behavior.searchHistory.join(', ')}
 
-Call tools to compose the UI. Use restructureHome for weather/event layout changes, showMoodPicker when user needs help deciding, showContextBanner for alerts, showCuratedRow for food rows.`;
+Compose the home page UI. Use the reasoning field in each tool to explain why you chose that component for this user.`;
 
   const encoder = new TextEncoder();
 
@@ -175,11 +187,11 @@ Call tools to compose the UI. Use restructureHome for weather/event layout chang
           body: JSON.stringify({
             model: 'openai/gpt-4o-mini',
             messages: [
-              { role: 'system', content: 'You are a food delivery UI composer. Call tools to compose the home page UI.' },
+              { role: 'system', content: 'You are a food delivery UI composer. Call the appropriate UI tools to compose the home page. Each tool has a `reasoning` field — fill it with 1-2 Vietnamese sentences explaining which signals (persona name, time, weather, search history) drove this layout choice.' },
               { role: 'user', content: prompt },
             ],
             tools: COMPOSE_TOOLS,
-            tool_choice: 'required',
+            tool_choice: 'auto',
             stream: true,
             stream_options: { include_usage: true },
           }),
@@ -197,12 +209,9 @@ Call tools to compose the UI. Use restructureHome for weather/event layout chang
           const buf = buffers.get(idx);
           if (!buf || !buf.name) return;
           try {
-            const schema = primitives[buf.name as keyof typeof primitives];
-            if (schema) {
-              const parsed = schema.safeParse(JSON.parse(buf.argsStr));
-              if (parsed.success) {
-                emit({ type: 'tool', name: buf.name, args: parsed.data });
-              }
+            const parsed = JSON.parse(buf.argsStr);
+            if (primitives[buf.name as keyof typeof primitives]) {
+              emit({ type: 'tool', name: buf.name, args: parsed });
             }
           } catch { /* skip malformed */ }
         };
@@ -229,6 +238,10 @@ Call tools to compose the UI. Use restructureHome for weather/event layout chang
 
               const delta = chunk.choices?.[0]?.delta;
               if (!delta) continue;
+
+              if (delta.content) {
+                emit({ type: 'text', delta: delta.content });
+              }
 
               for (const tc of delta.tool_calls ?? []) {
                 const idx: number = tc.index ?? 0;

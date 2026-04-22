@@ -22,6 +22,7 @@ interface Metrics {
   tokens: number;
 }
 
+
 function MetricsPanel({ label, latencyMs, tokens, source, determinism }: { label: string; latencyMs: number; tokens: number; source: string; determinism?: number; }) {
   const sourceColors: Record<string, string> = {
     ai: "bg-emerald-100 text-emerald-700",
@@ -63,10 +64,10 @@ function MetricsPanel({ label, latencyMs, tokens, source, determinism }: { label
 }
 
 const PERSONAS = [
-  { id: "minh", name: "Minh", label: "Office worker · HCM", icon: "💼" },
-  { id: "lan", name: "Lan", label: "Single mother · Hanoi", icon: "👩‍👧‍👦" },
-  { id: "tuan", name: "Tuấn", label: "Student · Đà Nẵng", icon: "🎓" },
-  { id: "an", name: "An", label: "Family of 4 · HCM", icon: "👨‍👩‍👧‍👦" },
+  { id: "minh", name: "Minh", label: "Văn phòng · HCM", hint: "Thích đồ cay · ăn trưa", icon: "💼" },
+  { id: "lan", name: "Lan", label: "Mẹ đơn thân · Hà Nội", hint: "Lành mạnh · tiết kiệm", icon: "👩‍👧‍👦" },
+  { id: "tuan", name: "Tuấn", label: "Sinh viên · Đà Nẵng", hint: "Gà rán · ăn khuya", icon: "🎓" },
+  { id: "an", name: "An", label: "Gia đình · HCM", hint: "Hải sản cao cấp · cuối tuần", icon: "👨‍👩‍👧‍👦" },
 ];
 
 const SCENARIOS = [
@@ -102,7 +103,7 @@ function HomeSurface({ tools }: { tools: ToolCall[] }) {
                   <p className="text-sm opacity-80">{args.hero.subtitle}</p>
                 </div>
               )}
-              {args.rows.map((row, j) => (
+              {(args.rows ?? []).map((row, j) => (
                 <div key={j} className="space-y-2">
                   <h4 className="text-sm font-bold text-slate-700">{row.title}</h4>
                   <div className="flex gap-3 overflow-x-auto pb-2">
@@ -244,6 +245,7 @@ export default function Home() {
   const [tools, setTools] = useState<ToolCall[]>([]);
   const [bundle, setBundle] = useState<SignalBundle | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [reasoning, setReasoning] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasRun, setHasRun] = useState(false);
 
@@ -253,6 +255,7 @@ export default function Home() {
     setTools([]);
     setBundle(null);
     setMetrics(null);
+    setReasoning("");
 
     try {
       const res = await fetch("/api/compose", {
@@ -277,8 +280,14 @@ export default function Home() {
           if (!line.startsWith("data: ")) continue;
           try {
             const event = JSON.parse(line.slice(6));
+            console.log('event :>> ', event);
             if (event.type === "bundle") setBundle(event.bundle);
-            if (event.type === "tool") setTools(prev => [...prev, { name: event.name, args: event.args }]);
+            if (event.type === "tool") {
+              if (event.args.reasoning) {
+                setReasoning(prev => prev || (event.args.reasoning as string));
+              }
+              setTools(prev => [...prev, { name: event.name, args: event.args }]);
+            }
             if (event.type === "done") {
               setMetrics({ latencyMs: event.latencyMs, tokens: event.tokens });
               setIsLoading(false);
@@ -332,8 +341,8 @@ export default function Home() {
                 >
                   <span className="text-2xl">{p.icon}</span>
                   <div>
-                    <div className="font-bold text-sm">{p.name}</div>
-                    <div className="text-xs text-slate-500">{p.label}</div>
+                    <div className="font-bold text-sm">{p.name} <span className="font-normal text-slate-500">· {p.label}</span></div>
+                    <div className="text-xs text-slate-400 mt-0.5">{p.hint}</div>
                   </div>
                 </button>
               ))}
@@ -400,10 +409,22 @@ export default function Home() {
           {/* Home surface */}
           <div className="bg-white rounded-xl border border-slate-200 p-5 min-h-[400px] shadow-sm">
             <h2 className="text-sm font-bold text-slate-600 mb-4">🏠 Home Surface</h2>
+
+            {/* AI reasoning — streams in before tools render */}
+            {(reasoning || (isLoading && hasRun)) && (
+              <div className="mb-4 flex gap-2 items-start bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <span className="text-base mt-0.5">🤖</span>
+                <p className="text-sm text-emerald-800 italic leading-relaxed">
+                  {reasoning || <span className="text-emerald-400">Đang phân tích ngữ cảnh…</span>}
+                  {isLoading && reasoning && <span className="inline-block w-0.5 h-3.5 bg-emerald-500 ml-0.5 animate-pulse align-middle" />}
+                </p>
+              </div>
+            )}
+
             {tools.length > 0 ? (
               <HomeSurface tools={tools} />
             ) : isLoading ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-3">
+              <div className="flex flex-col items-center justify-center h-48 gap-3">
                 <div className="flex gap-1.5">
                   <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                   <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
