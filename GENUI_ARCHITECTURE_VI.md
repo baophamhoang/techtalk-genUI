@@ -11,11 +11,11 @@
 | **Port** | 3101 | 3102 | 3103 |
 | **Trigger** | System event / User context selector | User chat (multi-turn) | Signal bundle (persona + scenario) hoặc chat |
 | **AI output** | Raw JSON Schema | Tool calls (props) | Tool calls (layout decisions) |
-| **Streaming** | Có (raw text stream) | Có (SSE via Vercel AI SDK) | Không (single request) |
-| **Multi-turn** | Không | Có | Có (chat mode) |
+| **Streaming** | Có (raw text stream) | Có (SSE via Vercel AI SDK) | Có (SSE — text events + tool events) |
+| **Multi-turn** | Không | Có | Không (single request per scenario) |
 | **Determinism** | Cao | Trung bình | Thấp |
 | **Kiểm soát output** | Zod validation sau generate | Zod schema trong tool definition | Zod safeParse per tool |
-| **AI model** | Minimax M2.7 | Minimax M2.7 (chat) + GPT-4o-mini (suggest) | Minimax M2.7 |
+| **AI model** | Minimax M2.7 | Minimax M2.7 (chat) + GPT-4o-mini (suggest) | claude-3-5-haiku (Anthropic) |
 
 ---
 
@@ -265,82 +265,87 @@ Signal Bundle (persona + scenario + weather + behavior)
 
 ```
 Frontend (page.tsx)
-  ├── Mode 1: Signal Composer
-  │     ├── Chọn Persona (Minh / Lan / Tuấn / An)
-  │     ├── Chọn Scenario (Baseline / Weather / Search Abandon)
-  │     └── → POST /api/compose
-  │           ├── buildSignalBundle(personaId, scenario)
-  │           └── composeUI(bundle) → AI → tool calls
-  │
-  └── Mode 2: Conversational Builder
-        ├── Multi-turn chat
-        └── → POST /api/chat
-              └── AI dùng tools: showProductCard, showForm,
-                  showStatsGrid, showDataTable, showAlertBanner
+  └── Signal Composer
+        ├── Chọn Persona (Minh / Lan / Tuấn / An)
+        ├── Chọn Scenario (Baseline / Weather / Search Abandon)
+        └── → POST /api/compose (SSE stream)
+              ├── emit: bundle event   → hiển thị signal panel
+              ├── emit: text events    → stream reasoning text (green box)
+              ├── emit: tool events    → render từng UI component
+              └── emit: done event     → hiển thị metrics
 
-lib/signals/collector.ts  → buildSignalBundle()   (deterministic context)
-lib/compose/composer.ts   → composeUI()           (AI layer)
+lib/signals/collector.ts   → buildSignalBundle()   (deterministic, 4 personas × 3 scenarios)
+app/api/compose/route.ts   → SSE stream với claude-3-5-haiku
 ```
+
+> **Lưu ý**: `app/api/chat` tồn tại (GPT-4o-mini, tool calling) nhưng chưa expose trong UI.
 
 ### Code mẫu — Signal bundle + AI compose
 
 ```typescript
-// lib/signals/collector.ts — tạo context bundle từ persona + scenario
-export function buildSignalBundle(personaId: string, scenario: string): SignalBundle {
-  const personas = {
-    minh: { name: "Minh", age: 28, city: "HCM", pattern: "Healthy-leaning, AOV 60k" },
-    lan:  { name: "Lan",  age: 35, city: "Hanoi", pattern: "Group orders, budget-conscious" },
-    tuan: { name: "Tuấn", age: 22, city: "Da Nang", pattern: "Late-night, fast/cheap" },
-  };
+// lib/signals/collector.ts — 4 personas × 3 scenarios = 12 unique signal bundles
+const PERSONAS = {
+  minh: { name: "Minh", age: 28, city: "HCM", pattern: "Thích đồ cay, ăn trưa văn phòng, 5 đơn/tuần, AOV 65k" },
+  lan:  { name: "Lan",  age: 35, city: "Hà Nội", pattern: "Ưu tiên lành mạnh + trẻ em, đặt combo, AOV 180k" },
+  tuan: { name: "Tuấn", age: 22, city: "Đà Nẵng", pattern: "Gà rán, trà sữa, ăn khuya, AOV 35k, tìm freeship" },
+  an:   { name: "An",   age: 40, city: "HCM", pattern: "Hải sản, lẩu cao cấp, bữa tối gia đình, AOV 350k" },
+};
 
-  const scenarioData = {
-    weather:       { time: "14:00", weather: { temp: 22, condition: "cold" }, ... },
-    searchAbandon: { time: "22:30", weather: { temp: 28, condition: "rainy" }, ... },
-  };
-
-  return { persona: personas[personaId], scenario, ...scenarioData[scenario] };
-}
+// Mỗi persona × scenario có time/location/searchHistory riêng → AI nhận context thật sự khác nhau
+const PERSONA_SCENARIOS = {
+  minh: {
+    baseline:     { time: "11:45", location: "văn phòng Quận 1", behavior: { recentOrders: 4, searchHistory: ["cơm trưa", "bún bò Huế"] } },
+    weather:      { time: "19:30", location: "nhà Bình Thạnh",   behavior: { recentOrders: 1, searchHistory: ["cháo nóng", "súp bò"] } },
+    searchAbandon:{ time: "22:15", location: "nhà Bình Thạnh",   behavior: { recentOrders: 0, searchHistory: ["mì cay", "bún bò", "lẩu cay"] } },
+  },
+  // ... lan, tuan, an tương tự
+};
 ```
 
 ```typescript
-// lib/compose/composer.ts — AI nhận bundle, quyết định layout tools
-export async function composeUI(bundle: SignalBundle): Promise<ComposeResult> {
-  const prompt = `
-Persona: ${bundle.persona.name}, ${bundle.persona.age} tuổi, ${bundle.persona.city}
-Pattern: ${bundle.persona.pattern}
-Scenario: ${bundle.scenario} — ${scenarioInstructions[bundle.scenario]}
-Thời gian: ${bundle.time} | Thời tiết: ${bundle.weather.temp}°C, ${bundle.weather.condition}
-Đơn gần đây: ${bundle.behavior.recentOrders} | Session: ${bundle.behavior.sessionMinutes} phút
+// app/api/compose/route.ts — SSE stream: bundle → text → tools → done
+const readableStream = new ReadableStream({
+  async start(controller) {
+    const emit = (obj: unknown) =>
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
 
-Dùng tools để compose layout trang chủ phù hợp với context.`;
+    emit({ type: 'bundle', bundle });   // signal panel hiện ngay
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    body: JSON.stringify({
-      model: "minimax/minimax-m2.7",
-      messages: [
-        { role: "system", content: "You are a food delivery UI composer." },
-        { role: "user",   content: prompt },
-      ],
-      tools: [
-        { type: "function", function: { name: "restructureHome", ... } },
-        { type: "function", function: { name: "showMoodPicker", ... } },
-        { type: "function", function: { name: "showCuratedRow", ... } },
-        { type: "function", function: { name: "showContextBanner", ... } },
-      ],
-      tool_choice: "required",   // Bắt buộc phải gọi tool, không được trả text thuần
-      stream: false,
-    }),
-  });
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      body: JSON.stringify({
+        model: 'anthropic/claude-3-5-haiku',   // Model duy nhất vừa stream text vừa call tools
+        messages: [{ role: 'user', content: prompt }],
+        tools: COMPOSE_TOOLS,
+        tool_choice: 'auto',   // AI tự quyết định — text + tools trong cùng response
+        stream: true,
+      }),
+    });
 
-  // Zod safeParse từng tool call
-  for (const tc of data.choices[0].message.tool_calls) {
-    const schema = primitives[tc.function.name];
-    const parsed = schema.safeParse(JSON.parse(tc.function.arguments));
-    if (parsed.success) parsedTools.push({ name: tc.function.name, args: parsed.data });
-  }
+    // Stream parse: accumulate tool args per index, emit khi switch sang tool mới
+    for await (const chunk of reader) {
+      if (delta.content) emit({ type: 'text', delta: delta.content });  // reasoning stream
+      for (const tc of delta.tool_calls ?? []) {
+        if (tc.index !== lastIdx) tryEmit(lastIdx);  // emit tool khi complete
+        buffer[tc.index].argsStr += tc.function?.arguments ?? '';
+      }
+    }
 
-  return { ok: parsedTools.length > 0, tools: parsedTools, latencyMs, tokens };
-}
+    // Zod safeParse — fallback sang raw nếu schema không match (tránh silent drop)
+    const parsed = schema.safeParse(raw);
+    emit({ type: 'tool', name, args: parsed.success ? parsed.data : raw });
+
+    emit({ type: 'done', latencyMs: Date.now() - start, tokens });
+  },
+});
+```
+
+```typescript
+// app/page.tsx — SSE event handlers
+const event = JSON.parse(line.slice(6));
+if (event.type === 'bundle') setBundle(event.bundle);           // signal panel
+if (event.type === 'text')   setReasoning(prev => prev + event.delta);  // stream word-by-word
+if (event.type === 'tool')   setTools(prev => [...prev, event]);         // thêm component
+if (event.type === 'done')   setMetrics({ latencyMs: event.latencyMs, tokens: event.tokens });
 ```
 
 ### Điểm mạnh
@@ -349,9 +354,9 @@ Dùng tools để compose layout trang chủ phù hợp với context.`;
 - **Validation vẫn chặt**: Zod safeParse reject tool call sai cấu trúc
 
 ### Điểm yếu
-- **Không stream**: single request/response → user thấy blank trong lúc chờ
-- **Signals là mock**: demo dùng hardcoded data, production cần real telemetry pipeline
+- **Signals là mock**: demo dùng hardcoded data, production cần real telemetry pipeline (weather API, analytics events, order DB)
 - **Khó debug**: AI có thể chọn layout "lạ" — khó audit tại sao AI lại chọn tool X
+- **Non-deterministic**: cùng một signal bundle, AI có thể chọn tool sequence khác nhau mỗi lần run
 
 ---
 
@@ -405,10 +410,10 @@ Dùng tools để compose layout trang chủ phù hợp với context.`;
 - **Voice input**: Thêm Web Speech API để user nói thay vì gõ — hợp với demo scenario bán lẻ.
 
 ### Demo 3 — Agentic GenUI
-- **Streaming compose**: Chuyển `stream: false` → `stream: true`, accumulate tool calls từng phần → render progressive layout.
+- ~~**Streaming compose**~~: ✅ **DONE** — SSE stream với text events (reasoning word-by-word) + tool events (render từng component), model đổi sang `claude-3-5-haiku`.
 - **Real signals**: Thay mock data bằng anonymous browser signals thật (scroll depth, click pattern, time-on-page) để AI decision có ý nghĩa hơn.
-- **Memory giữa turns** (chat mode): Lưu lại tool calls của AI turn trước vào conversation history dạng assistant summary, tránh AI re-render lại từ đầu.
-- **Explain mode**: Thêm toggle "Vì sao AI chọn layout này?" — AI trả plaintext giải thích reasoning trước khi render.
+- **Explain mode mở rộng**: Reasoning text đang stream rồi, có thể thêm toggle "Xem full reasoning" với structured breakdown (signal noticed → layout decision).
+- **Determinism layer**: Thêm rule-based pre-filter trước AI (ví dụ: nếu weather < 18°C thì luôn inject `showContextBanner`) để giảm non-determinism ở các case quan trọng.
 
 ---
 
@@ -416,8 +421,9 @@ Dùng tools để compose layout trang chủ phù hợp với context.`;
 
 ```
 OpenRouter (gateway)
-  └── Minimax M2.7     — main LLM (tool calling + streaming)
-  └── GPT-4o-mini      — suggest endpoint (fast, cheap)
+  └── Minimax M2.7          — Demo 1 & 2 main LLM (JSON streaming + tool calling)
+  └── GPT-4o-mini           — Demo 2 suggest endpoint (fast, cheap)
+  └── claude-3-5-haiku      — Demo 3 compose (text + tools trong cùng response)
 
 Vercel AI SDK v6 (ai, @ai-sdk/react, @ai-sdk/openai)
   ├── streamText()              — Demo 2 server-side streaming + tool calling
@@ -435,3 +441,49 @@ Next.js 16 App Router
   ├── Route handlers (app/api/*)
   └── Client components ("use client")
 ```
+
+---
+
+## Lý do chọn model & các lựa chọn thay thế
+
+> Các lựa chọn dưới đây phù hợp cho demo scale (~20 runs). Production cần benchmark thêm.
+
+### Demo 1 — JSON Schema streaming
+
+| Model | Giá (input/output per 1M) | Lý do chọn / không chọn |
+|---|---|---|
+| **Minimax M2.7** *(hiện tại)* | Rất rẻ | Hỗ trợ streaming, đủ dùng cho JSON output. Đôi khi thêm text thừa ngoài JSON phải strip |
+| **Gemini 2.0 Flash** ⭐ | $0.10 / $0.40 | Nhanh hơn, có `response_format` JSON mode native, free tier. **Lựa chọn tốt hơn** nếu muốn JSON sạch hơn |
+| **GPT-4o-mini** | $0.15 / $0.60 | JSON mode đáng tin cậy, streaming ổn. Phù hợp nếu đã dùng OpenAI |
+| **Qwen 2.5-72B** | $0.12 / $0.39 | Được train đặc biệt cho structured output, JSON rất sạch |
+
+**Kết luận**: Minimax M2.7 đủ dùng cho demo. Production nên đổi sang **Gemini 2.0 Flash** hoặc **GPT-4o-mini** để JSON output ổn định hơn.
+
+---
+
+### Demo 2 — Tool calling trong chat (multi-turn)
+
+| Model | Giá (input/output per 1M) | Lý do chọn / không chọn |
+|---|---|---|
+| **Minimax M2.7** *(hiện tại, main chat)* | Rất rẻ | Hỗ trợ tool calling nhưng **không đáng tin cậy** — đôi khi trả text thay vì gọi tool |
+| **GPT-4o-mini** *(hiện tại, suggest)* | $0.15 / $0.60 | Fast, rẻ, đủ để generate 3 follow-up chips |
+| **GPT-4o-mini** ⭐ *(thay main chat)* | $0.15 / $0.60 | Tool calling reliable hơn Minimax nhiều. **Thay thế đơn giản nhất** |
+| **claude-3-5-haiku** | $0.80 / $4.00 | Reliable nhất, vừa text vừa tool trong cùng response. Đắt hơn |
+| **DeepSeek V3.2** | ~$0.008 / rẻ | Pipeline agentic mới, tool-use compliance tốt. Chưa battle-tested |
+
+**Kết luận**: Đổi main chat từ Minimax sang **GPT-4o-mini** là đơn giản nhất — cùng API format, tool calling ổn định hơn đáng kể.
+
+---
+
+### Demo 3 — Text + tool calls trong cùng một response
+
+| Model | Giá (input/output per 1M) | Lý do chọn / không chọn |
+|---|---|---|
+| **claude-3-5-haiku** *(hiện tại)* ⭐ | $0.80 / $4.00 | **Model duy nhất tested** vừa stream reasoning text vừa call tools trong cùng response. ~$0.18 tổng cho 20 runs |
+| **GPT-4o-mini** | $0.15 / $0.60 | ❌ Fail — chọn text OR tools, không làm cả hai |
+| **DeepSeek V3** | Rất rẻ | ❌ Fail — tương tự GPT-4o-mini |
+| **Minimax M2.7 / Minimax-01** | Rất rẻ | ❌ Fail — 26s latency (reasoning model) + drop hết tool calls |
+| **claude-3-5-sonnet** | $3.00 / $15.00 | ✅ Có thể dùng. Mạnh hơn Haiku, đắt hơn nhiều. Overkill cho demo |
+| **claude-3-haiku** (cũ) | $0.25 / $1.25 | Rẻ hơn, nhưng cũ hơn — chưa test pattern này |
+
+**Kết luận**: `claude-3-5-haiku` là **lựa chọn đúng** cho constraint "text + tools cùng response". Đây là behavior đặc trưng của Anthropic models — các provider khác thường tách riêng hai mode. Nếu muốn rẻ hơn và chấp nhận chỉ có tools (không có reasoning text), DeepSeek V3.2 đáng thử.
