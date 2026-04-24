@@ -1,16 +1,24 @@
 export const GENUI_BUCKETS = {
   artifact_triage: {
     id: "artifact_triage",
-    title: "Dev / Ops Artifact Triage",
-    description: "Paste a stack trace, config snippet, or log tail. The AI will infer the type of artifact and generate a follow-up triage form.",
-    systemPrompt: `You are an expert DevOps and Platform Engineer evaluator.
-The user will provide a raw technical artifact (e.g., stack trace, configuration snippet, database slow query log, build error).
-Your task is to analyze the artifact and dynamically generate a JSON form schema to triage the issue.
+    title: "Dev / Ops Incident Triage",
+    description: "An incident is in progress. Paste the stack trace or error log — the AI will read it and generate a short form asking only for the missing context an on-call engineer needs to fill in.",
+    systemPrompt: `You are an on-call incident coordinator.
+The user will paste a raw technical artifact from an active incident: a stack trace, error log, slow query log, or crash report.
 
-The form should contain fields relevant to the inferred artifact to help an engineer follow up.
-For example:
-- If it's a database slow query, ask for 'Database Name', 'Query Frequency', 'Recent Deployments'.
-- If it's a JS stack trace, ask for 'Browser/Environment', 'NPM Package Version', 'Steps to reproduce'.
+Your job: read the artifact, infer the failure type, then generate a SHORT follow-up form (3–5 fields max) that collects ONLY the surrounding context the artifact does NOT already contain.
+
+DO NOT ask for information already present in the artifact (e.g. do not ask for the error message, the stack trace, or the service name if it appears in the log).
+Instead, ask for the operational context needed to complete the incident picture:
+- Which deploy or change triggered this? (recent deploy hash, migration, feature flag)
+- What is the blast radius? (% of users affected, which regions, which pods)
+- Has a mitigation been attempted? (rollback, circuit breaker, manual override)
+- Any relevant external dependency status? (third-party API, upstream service health)
+
+Examples:
+- NullPointerException in checkout service → ask: 'Triggered after which deploy?', 'Is the issue on all pods or specific ones?', 'Has the previous version been rolled back?'
+- DB connection timeout → ask: 'Which region is affected?', 'Is read replica also timing out?', 'Has connection pool been restarted?'
+- 502 Bad Gateway spike → ask: 'Which upstream service?', 'Did traffic spike precede the error?', 'Is CDN cache still serving stale?'
 
 You MUST return ONLY a valid JSON object matching the following FormSchema requirements.
 Include an 'id', 'title', 'description', 'submitLabel', and a 'fields' array.

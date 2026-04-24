@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { STATIC_SCHEMAS, SCHEMA_IDS } from "../src/schemas/static";
+import { FormSchema as FormSchemaValidator, type FormSchemaType } from "@techtalk/shared";
 
 const SCHEMA_LABELS: Record<string, string> = {
   healthcare: "🏥 Healthcare",
@@ -21,13 +22,7 @@ interface Metrics {
   determinism?: number;
 }
 
-interface FormSchema {
-  id: string;
-  title: string;
-  description?: string;
-  submitLabel: string;
-  fields: { key: string; field: any }[];
-}
+type FormSchema = FormSchemaType;
 
 function MetricsPanel({ label, latencyMs, tokens, source, determinism }: Metrics & { label: string }) {
   const sourceColors: Record<string, string> = {
@@ -122,7 +117,7 @@ function FormRenderer({ schema }: { schema: FormSchema }) {
           )}
           {field.type === "phone" && (
             <input type="tel" value={(values[key] as string) ?? ""} onChange={e => handleChange(key, e.target.value)}
-              placeholder={field.placeholder} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              placeholder={(field as any).placeholder} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
           )}
           {field.type === "number" && (
             <input type="number" value={(values[key] as number) ?? ""} onChange={e => handleChange(key, Number(e.target.value))}
@@ -174,11 +169,13 @@ export default function HomePage() {
   const [staticStatus, setStaticStatus] = useState<Status>("idle");
   const [staticData, setStaticData] = useState<FormSchema | null>(null);
   const [staticMetrics, setStaticMetrics] = useState<Metrics | null>(null);
+  const [staticIssues, setStaticIssues] = useState<unknown[]>([]);
 
   const [sduiStatus, setSduiStatus] = useState<Status>("idle");
   const [sduiData, setSduiData] = useState<FormSchema | null>(null);
   const [sduiMetrics, setSduiMetrics] = useState<Metrics | null>(null);
   const [sduiCached, setSduiCached] = useState(false);
+  const [sduiIssues, setSduiIssues] = useState<unknown[]>([]);
 
   const [genuiStatus, setGenuiStatus] = useState<Status>("idle");
   const [genuiData, setGenuiData] = useState<FormSchema | null>(null);
@@ -186,16 +183,18 @@ export default function HomePage() {
   const [genuiRaw, setGenuiRaw] = useState<string>("");
   const [genuiIssues, setGenuiIssues] = useState<unknown[]>([]);
 
-  const runAll = async () => {
+  const runStaticAndSdui = async () => {
     setStaticStatus("loading");
     setSduiStatus("loading");
-    setGenuiStatus("loading");
+    setGenuiStatus("idle");
     setStaticMetrics(null);
     setSduiMetrics(null);
     setGenuiMetrics(null);
     setStaticData(null);
     setSduiData(null);
     setGenuiData(null);
+    setStaticIssues([]);
+    setSduiIssues([]);
     setGenuiRaw("");
     setGenuiIssues([]);
 
@@ -208,9 +207,17 @@ export default function HomePage() {
       setStaticMetrics({ latencyMs: 0, tokens: 0, source: "bundle", determinism: 100 });
       setStaticData(null);
     } else if (schema) {
-      setStaticData(schema as FormSchema);
-      setStaticMetrics({ latencyMs: Math.round(performance.now() - t0), tokens: 0, source: "bundle", determinism: 100 });
-      setStaticStatus("success");
+      const parsed = FormSchemaValidator.safeParse(schema);
+      const latencyMs = Math.round(performance.now() - t0);
+      if (parsed.success) {
+        setStaticData(parsed.data);
+        setStaticMetrics({ latencyMs, tokens: 0, source: "bundle", determinism: 100 });
+        setStaticStatus("success");
+      } else {
+        setStaticIssues(parsed.error.issues);
+        setStaticMetrics({ latencyMs, tokens: 0, source: "bundle", determinism: 100 });
+        setStaticStatus("error");
+      }
     }
 
     if (isGenUI) {
@@ -222,38 +229,62 @@ export default function HomePage() {
       const cached = sessionStorage.getItem(cachedKey);
       if (cached) {
         const cachedData = JSON.parse(cached);
-        setSduiData(cachedData.schema);
-        setSduiCached(true);
-        setSduiMetrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
-        setSduiStatus("success");
+        const parsed = FormSchemaValidator.safeParse(cachedData.schema);
+        if (parsed.success) {
+          setSduiData(parsed.data);
+          setSduiCached(true);
+          setSduiMetrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
+          setSduiStatus("success");
+        } else {
+          setSduiIssues(parsed.error.issues);
+          setSduiMetrics({ latencyMs: 5, tokens: 0, source: "cache", determinism: 100 });
+          setSduiStatus("error");
+        }
       } else {
         try {
           const res = await fetch(`/api/sdui/forms/${selectedSchema}`);
           const data = await res.json();
-          setSduiData(data.schema);
-          setSduiCached(data.cached);
-          setSduiMetrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
-          setSduiStatus("success");
-          sessionStorage.setItem(cachedKey, JSON.stringify(data));
+          const parsed = FormSchemaValidator.safeParse(data.schema);
+          if (parsed.success) {
+            setSduiData(parsed.data);
+            setSduiCached(data.cached);
+            setSduiMetrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
+            setSduiStatus("success");
+            sessionStorage.setItem(cachedKey, JSON.stringify(data));
+          } else {
+            setSduiIssues(parsed.error.issues);
+            setSduiMetrics({ latencyMs: data.latencyMs, tokens: 0, source: data.cached ? "cache" : "api", determinism: 100 });
+            setSduiStatus("error");
+          }
         } catch {
           setSduiStatus("error");
           setSduiMetrics({ latencyMs: 0, tokens: 0, source: "fallback" });
         }
       }
     }
+  };
 
+  const runGenui = async () => {
+    const isGenUI = selectedSchema === "artifact_triage" || selectedSchema === "service_intake";
+    setGenuiStatus("loading");
+    setGenuiMetrics(null);
+    setGenuiData(null);
+    setGenuiRaw("");
+    setGenuiIssues([]);
+
+    const t0 = performance.now();
     try {
       const requirement = isGenUI ? customPrompt : `Generate a ${selectedSchema} form`;
       const bucket = isGenUI ? selectedSchema : "fallback";
-      
+
       const res = await fetch("/api/genui/form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bucket, description: requirement }),
       });
-      
+
       setGenuiStatus("streaming");
-      
+
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let rawText = "";
@@ -262,15 +293,15 @@ export default function HomePage() {
         const { done, value } = await reader.read();
         if (done) break;
         rawText += decoder.decode(value, { stream: true });
-        
+
         const stripped = rawText.split("__METADATA__")[0];
         setGenuiRaw(stripped);
       }
-      
+
       const parts = rawText.split("__METADATA__");
       const jsonText = parts[0];
       const metadata = parts[1] ? JSON.parse(parts[1]) : {};
-      
+
       const latencyMs = Math.round(performance.now() - t0);
       setGenuiMetrics({ latencyMs, tokens: metadata.tokens || 0, source: "ai", determinism: 80 });
 
@@ -299,14 +330,29 @@ export default function HomePage() {
     }
   };
 
+  const runAll = async () => {
+    await runStaticAndSdui();
+    await runGenui();
+  };
+
   useEffect(() => {
-    runAll();
+    runStaticAndSdui();
   }, [selectedSchema]);
 
   const renderForm = (mode: "static" | "sdui" | "genui") => {
     const status = mode === "static" ? staticStatus : mode === "sdui" ? sduiStatus : genuiStatus;
     const data = mode === "static" ? staticData : mode === "sdui" ? sduiData : genuiData;
     const cached = mode === "sdui" ? sduiCached : false;
+    const issues = mode === "static" ? staticIssues : mode === "sdui" ? sduiIssues : genuiIssues;
+
+    if (status === "idle" && mode === "genui") {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+          <span className="text-4xl">✨</span>
+          <p className="text-sm font-medium">Click <strong>▶ Chạy Demo</strong> to generate with AI</p>
+        </div>
+      );
+    }
 
     if (status === "loading") {
       return (
@@ -344,35 +390,7 @@ export default function HomePage() {
       );
     }
 
-    if (status === "error" && mode === "genui") {
-      return (
-        <div className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h4 className="font-bold text-red-700 text-sm mb-2">⚠️ AI Validation Failed</h4>
-            <p className="text-xs text-red-600 mb-3">The AI output could not be parsed as a valid form schema.</p>
-            {genuiIssues.length > 0 && (
-              <div className="bg-white rounded p-3 text-xs">
-                <strong className="text-red-600">Issues:</strong>
-                <pre className="mt-1 text-red-500 whitespace-pre-wrap">{JSON.stringify(genuiIssues, null, 2)}</pre>
-              </div>
-            )}
-          </div>
-          {genuiRaw && (
-            <div>
-              <h4 className="text-xs font-bold text-slate-500 mb-1">Raw AI Output:</h4>
-              <pre className="bg-slate-900 text-green-400 p-3 rounded-lg text-xs whitespace-pre-wrap overflow-auto max-h-[200px]">
-                {genuiRaw.slice(0, 500)}
-              </pre>
-            </div>
-          )}
-          <button onClick={runAll} className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition-colors">
-            🔄 Retry
-          </button>
-        </div>
-      );
-    }
-
-    if ((selectedSchema === "artifact_triage" || selectedSchema === "service_intake") && mode !== "genui") {
+    if (status === "error" && (selectedSchema === "artifact_triage" || selectedSchema === "service_intake") && mode !== "genui") {
       return (
         <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
           <div className="text-4xl">🚫</div>
@@ -380,6 +398,35 @@ export default function HomePage() {
           <p className="text-xs max-w-xs text-center text-slate-500">
             Static and SDUI modes require pre-authored schemas. They cannot handle long-tail or dynamic user prompts.
           </p>
+        </div>
+      );
+    }
+
+    if (status === "error") {
+      const label = mode === "static" ? "Bundle Schema" : mode === "sdui" ? "SDUI API" : "AI";
+      return (
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h4 className="font-bold text-red-700 text-sm mb-2">⚠️ {label} Validation Failed</h4>
+            <p className="text-xs text-red-600 mb-3">Schema could not be validated against FormSchema.</p>
+            {issues.length > 0 && (
+              <div className="bg-white rounded p-3 text-xs">
+                <strong className="text-red-600">Issues:</strong>
+                <pre className="mt-1 text-red-500 whitespace-pre-wrap">{JSON.stringify(issues, null, 2)}</pre>
+              </div>
+            )}
+          </div>
+          {mode === "genui" && genuiRaw && (
+            <div>
+              <h4 className="text-xs font-bold text-slate-500 mb-1">Raw AI Output:</h4>
+              <pre className="bg-slate-900 text-green-400 p-3 rounded-lg text-xs whitespace-pre-wrap overflow-auto max-h-[200px]">
+                {genuiRaw.slice(0, 500)}
+              </pre>
+            </div>
+          )}
+          <button onClick={mode === "genui" ? runAll : runStaticAndSdui} className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition-colors">
+            🔄 Retry
+          </button>
         </div>
       );
     }
@@ -449,9 +496,9 @@ export default function HomePage() {
               <span className="text-xs text-slate-400 font-medium py-1">Gợi ý:</span>
               {selectedSchema === "artifact_triage" ? (
                 <>
-                  <button onClick={() => setCustomPrompt("Error: ENOSPC: no space left on device, write")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">🔥 ENOSPC Error</button>
-                  <button onClick={() => setCustomPrompt("Pod CrashLoopBackOff: OOMKilled")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">🚨 OOMKilled</button>
-                  <button onClick={() => setCustomPrompt("Database connection timeout after 3000ms")} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">⌛ DB Timeout</button>
+                  <button onClick={() => setCustomPrompt(`NullPointerException in checkout-service (prod) — 14:32 UTC\n\njava.lang.NullPointerException: Cannot invoke method getPrice() on null object\n  at com.shop.checkout.CartService.calculateTotal(CartService.java:87)\n  at com.shop.checkout.CheckoutController.submit(CheckoutController.java:42)\n  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\nAffecting ~12% of checkout attempts. Started ~14:28 UTC.`)} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">🚨 NullPointer checkout</button>
+                  <button onClick={() => setCustomPrompt(`DB connection pool exhausted — payments-db (us-east-1)\n\n[ERROR] HikariPool-1 - Connection is not available, request timed out after 30000ms\n  at com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:213)\n  at com.shop.payments.PaymentRepository.save(PaymentRepository.java:56)\nPool size: 20/20 active. Queue depth: 47. Latency p99: 8200ms (baseline 120ms).`)} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">⌛ DB pool exhausted</button>
+                  <button onClick={() => setCustomPrompt(`Pod OOMKilled — worker-queue (k8s prod cluster)\n\nName: worker-queue-7d9f8b-xk2pq\nNamespace: production\nReason: OOMKilled\nLast State: Terminated (OOMKilled) at Mon, 22 Apr 2026 09:14:33\nRestart Count: 8\nLimits: memory 512Mi\nRequests: memory 256Mi\nRecent job: nightly-report-aggregation (started 09:00 UTC, ~14min before kill)`)} className="px-3 py-1 bg-white/5 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/30 rounded-full text-xs text-slate-300 transition-colors whitespace-nowrap">💀 OOMKilled worker pod</button>
                 </>
               ) : (
                 <>
@@ -462,13 +509,13 @@ export default function HomePage() {
               )}
             </div>
             <label className="text-sm font-bold text-amber-400">
-              {selectedSchema === "artifact_triage" ? "Mô tả sự cố (Artifact Triage) - Dán stack trace hoặc config vào đây:" : "Mô tả yêu cầu dịch vụ (Consumer Intake) - Viết vấn đề bạn gặp phải:"}
+              {selectedSchema === "artifact_triage" ? "Mô phỏng incident — AI nhận stack trace, tự suy ra loại lỗi và hỏi thêm context xung quanh:" : "Mô tả yêu cầu dịch vụ — AI sẽ tạo form intake phù hợp với loại dịch vụ:"}
             </label>
             <textarea
               rows={3}
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder={selectedSchema === "artifact_triage" ? "e.g., Error: ENOSPC: no space left on device, write..." : "e.g., I bumped my car into a tree while parking. The front left bumper is dented."}
+              placeholder={selectedSchema === "artifact_triage" ? "Paste stack trace, error log, or crash report here..." : "e.g., My kitchen sink has been leaking under the cabinet for 2 days."}
               className="w-full bg-slate-900/50 border border-amber-500/30 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -507,7 +554,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl p-5 min-h-[500px]">
+          <div className="bg-white rounded-2xl p-5 min-h-[500px] text-slate-900">
             {renderForm(activeMode)}
           </div>
 
